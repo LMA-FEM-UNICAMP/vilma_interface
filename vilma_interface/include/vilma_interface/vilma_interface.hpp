@@ -7,16 +7,10 @@
 #include "std_msgs/msg/float64_multi_array.hpp"
 
 #include <autoware_auto_control_msgs/msg/ackermann_control_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/gear_command.hpp>
 #include <autoware_auto_vehicle_msgs/msg/control_mode_report.hpp>
-#include <autoware_auto_vehicle_msgs/msg/engage.hpp>
 #include <autoware_auto_vehicle_msgs/msg/gear_command.hpp>
 #include <autoware_auto_vehicle_msgs/msg/gear_report.hpp>
-#include <autoware_auto_vehicle_msgs/msg/hazard_lights_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/hazard_lights_report.hpp>
 #include <autoware_auto_vehicle_msgs/msg/steering_report.hpp>
-#include <autoware_auto_vehicle_msgs/msg/turn_indicators_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/turn_indicators_report.hpp>
 #include <autoware_auto_vehicle_msgs/msg/velocity_report.hpp>
 #include <autoware_auto_vehicle_msgs/srv/control_mode_command.hpp>
 
@@ -25,6 +19,10 @@
 #include <cmath>
 #include <cstdlib>
 #include <memory>
+#include <vector>
+#include <string>
+
+#include "vilma_interface/vilma_ma_labeling.hpp"
 
 namespace vilma
 {
@@ -34,11 +32,12 @@ namespace vilma
         VilmaInterface();
 
     private:
-    
+
         double longitudinal_velocity_; // m/s
         double lateral_velocity_;      // m/s
         double heading_rate_;          // rad/s
         double steer_tire_angle_;      // rad/s
+        
 
         // Autoware
 
@@ -47,19 +46,28 @@ namespace vilma
         rclcpp::Subscription<autoware_auto_control_msgs::msg::AckermannControlCommand>::SharedPtr control_cmd_sub_;
         rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::GearCommand>::SharedPtr gear_cmd_sub_;
 
+        /* Publishers */
+
         rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::ControlModeReport>::SharedPtr control_mode_pub_;
         rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::GearReport>::SharedPtr gear_report_pub_;
         rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::SteeringReport>::SharedPtr steering_report_pub_;
         rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::VelocityReport>::SharedPtr velocity_report_pub_;
 
-        /* Publishers */
+        /* Services */
 
         rclcpp::Service<autoware_auto_vehicle_msgs::srv::ControlModeCommand>::SharedPtr control_mode_server_;
 
+        /* Messages */
+
+        autoware_auto_control_msgs::msg::AckermannControlCommand control_cmd_msg_;
+        autoware_auto_vehicle_msgs::msg::GearCommand gear_cmd_msg_;
+
+        autoware_auto_vehicle_msgs::msg::ControlModeReport control_mode_msg_;
+
         /* Callbacks */
 
-        void control_cmd_callback(const autoware_auto_control_msgs::msg::AckermannControlCommand::ConstSharedPtr);
-        void gear_cmd_callback(const autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr);
+        void control_cmd_callback(const autoware_auto_control_msgs::msg::AckermannControlCommand::ConstSharedPtr msg);
+        void gear_cmd_callback(const autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg);
         void control_mode_cmd_callback(const autoware_auto_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
                                        const autoware_auto_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response);
         // VILMA
@@ -72,6 +80,11 @@ namespace vilma
         /* Publishers */
 
         rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr joystick_ma_pub_;
+
+        /* Messages */
+
+        std_msgs::msg::Float64MultiArray joystick_ma_msg_;
+        std::vector<double> joystick_ma_msg_data_;
 
         /* Callbacks */
 
