@@ -6,13 +6,13 @@
 
 #include "std_msgs/msg/float64_multi_array.hpp"
 
-#include <autoware_auto_control_msgs/msg/ackermann_control_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/control_mode_report.hpp>
-#include <autoware_auto_vehicle_msgs/msg/gear_command.hpp>
-#include <autoware_auto_vehicle_msgs/msg/gear_report.hpp>
-#include <autoware_auto_vehicle_msgs/msg/steering_report.hpp>
-#include <autoware_auto_vehicle_msgs/msg/velocity_report.hpp>
-#include <autoware_auto_vehicle_msgs/srv/control_mode_command.hpp>
+#include <autoware_control_msgs/msg/control.hpp>
+#include <autoware_vehicle_msgs/msg/control_mode_report.hpp>
+#include <autoware_vehicle_msgs/msg/gear_command.hpp>
+#include <autoware_vehicle_msgs/msg/gear_report.hpp>
+#include <autoware_vehicle_msgs/msg/steering_report.hpp>
+#include <autoware_vehicle_msgs/msg/velocity_report.hpp>
+#include <autoware_vehicle_msgs/srv/control_mode_command.hpp>
 
 #include <algorithm>
 #include <functional>
@@ -23,6 +23,10 @@
 #include <string>
 
 #include "vilma_interface/vilma_ma_labeling.hpp"
+#include "vilma_velocity_control/PIDLMA.hpp"
+
+#define BRAKE_DEADBAND -0.1
+
 
 namespace vilma
 {
@@ -33,43 +37,48 @@ namespace vilma
 
     private:
 
-        double longitudinal_velocity_; // m/s
-        double lateral_velocity_;      // m/s
-        double heading_rate_;          // rad/s
-        double steer_tire_angle_;      // rad/s
+        // Objects
+
+        PIDLMA velocity_controller_;
         
+        // Parameters
+
+        double max_steer_tire_angle;
+        double brake_deadband;
+        double joystick_ma_time_validity;
 
         // Autoware
 
         /* Subscribers */
 
-        rclcpp::Subscription<autoware_auto_control_msgs::msg::AckermannControlCommand>::SharedPtr control_cmd_sub_;
-        rclcpp::Subscription<autoware_auto_vehicle_msgs::msg::GearCommand>::SharedPtr gear_cmd_sub_;
+        rclcpp::Subscription<autoware_control_msgs::msg::Control>::SharedPtr control_cmd_sub_;
+        rclcpp::Subscription<autoware_vehicle_msgs::msg::GearCommand>::SharedPtr gear_cmd_sub_;
 
         /* Publishers */
 
-        rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::ControlModeReport>::SharedPtr control_mode_pub_;
-        rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::GearReport>::SharedPtr gear_report_pub_;
-        rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::SteeringReport>::SharedPtr steering_report_pub_;
-        rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::VelocityReport>::SharedPtr velocity_report_pub_;
+        rclcpp::Publisher<autoware_vehicle_msgs::msg::ControlModeReport>::SharedPtr control_mode_pub_;
+        rclcpp::Publisher<autoware_vehicle_msgs::msg::GearReport>::SharedPtr gear_report_pub_;
+        rclcpp::Publisher<autoware_vehicle_msgs::msg::SteeringReport>::SharedPtr steering_report_pub_;
+        rclcpp::Publisher<autoware_vehicle_msgs::msg::VelocityReport>::SharedPtr velocity_report_pub_;
 
         /* Services */
 
-        rclcpp::Service<autoware_auto_vehicle_msgs::srv::ControlModeCommand>::SharedPtr control_mode_server_;
+        rclcpp::Service<autoware_vehicle_msgs::srv::ControlModeCommand>::SharedPtr control_mode_server_;
 
         /* Messages */
 
-        autoware_auto_control_msgs::msg::AckermannControlCommand control_cmd_msg_;
-        autoware_auto_vehicle_msgs::msg::GearCommand gear_cmd_msg_;
+        autoware_vehicle_msgs::msg::ControlModeReport control_mode_msg_;
 
-        autoware_auto_vehicle_msgs::msg::ControlModeReport control_mode_msg_;
+        autoware_control_msgs::msg::Control control_cmd_msg_;
 
         /* Callbacks */
 
-        void control_cmd_callback(const autoware_auto_control_msgs::msg::AckermannControlCommand::ConstSharedPtr msg);
-        void gear_cmd_callback(const autoware_auto_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg);
-        void control_mode_cmd_callback(const autoware_auto_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
-                                       const autoware_auto_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response);
+        void control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg);
+        void gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg);
+        void control_mode_cmd_callback(const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
+                                       const autoware_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response);
+        
+        
         // VILMA
 
         /* Subscribers */
@@ -84,12 +93,17 @@ namespace vilma
         /* Messages */
 
         std_msgs::msg::Float64MultiArray joystick_ma_msg_;
+        std_msgs::msg::Float64MultiArray state_ma_msg_;
         std::vector<double> joystick_ma_msg_data_;
 
         /* Callbacks */
 
         void state_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg);
         void sensors_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg);
+
+        // Methods
+
+        void control_vilma_velocity(double longitudinal_velocity);
     };
 
 } // namespace vilma

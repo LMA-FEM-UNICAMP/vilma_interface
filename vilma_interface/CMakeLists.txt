@@ -9,7 +9,8 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp  REQUIRED)
 find_package(std_msgs  REQUIRED)
-find_package(autoware_auto_msgs REQUIRED)
+find_package(autoware_control_msgs REQUIRED)
+find_package(autoware_vehicle_msgs REQUIRED)
 
 add_executable(vilma_interface_node src/vilma_interface_node.cpp)
 target_include_directories(vilma_interface_node PUBLIC
@@ -20,7 +21,8 @@ ament_target_dependencies(
   vilma_interface_node
   "rclcpp"
   "std_msgs"
-  "autoware_auto_msgs"
+  "autoware_control_msgs"
+  "autoware_vehicle_msgs"
 )
 
 install(TARGETS vilma_interface_node

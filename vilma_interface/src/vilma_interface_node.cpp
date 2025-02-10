@@ -1,10 +1,8 @@
-#include <cstdio>
+
+#include "vilma_interface/vilma_interface.hpp"
 
 int main(int argc, char ** argv)
 {
-  (void) argc;
-  (void) argv;
-
-  printf("hello world vilma_interface package\n");
+  
   return 0;
 }
