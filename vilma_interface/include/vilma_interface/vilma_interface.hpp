@@ -2,17 +2,7 @@
 #ifndef vilma_interface__HPP_
 #define vilma_interface__HPP_
 
-#include "rclcpp/rclcpp.hpp"
-
-#include "std_msgs/msg/float64_multi_array.hpp"
-
-#include <autoware_control_msgs/msg/control.hpp>
-#include <autoware_vehicle_msgs/msg/control_mode_report.hpp>
-#include <autoware_vehicle_msgs/msg/gear_command.hpp>
-#include <autoware_vehicle_msgs/msg/gear_report.hpp>
-#include <autoware_vehicle_msgs/msg/steering_report.hpp>
-#include <autoware_vehicle_msgs/msg/velocity_report.hpp>
-#include <autoware_vehicle_msgs/srv/control_mode_command.hpp>
+// std includes
 
 #include <algorithm>
 #include <functional>
@@ -22,6 +12,25 @@
 #include <vector>
 #include <string>
 
+// ROS includes
+
+#include "rclcpp/rclcpp.hpp"
+
+#include "std_msgs/msg/float64_multi_array.hpp"
+#include "std_msgs/msg/header.hpp"
+
+/* Autoware includes */
+
+#include <autoware_control_msgs/msg/control.hpp>
+#include <autoware_vehicle_msgs/msg/control_mode_report.hpp>
+#include <autoware_vehicle_msgs/msg/gear_command.hpp>
+#include <autoware_vehicle_msgs/msg/gear_report.hpp>
+#include <autoware_vehicle_msgs/msg/steering_report.hpp>
+#include <autoware_vehicle_msgs/msg/velocity_report.hpp>
+#include <autoware_vehicle_msgs/srv/control_mode_command.hpp>
+
+// Personal libraries includes
+
 #include "vilma_interface/vilma_ma_labeling.hpp"
 #include "vilma_interface/PIDLMA.hpp"
 
@@ -30,9 +39,11 @@ namespace vilma
     class VilmaInterface : public rclcpp::Node
     {
     public:
+    
         VilmaInterface();
 
     private:
+
         // Attributes
 
         PIDLMA velocity_controller_;
@@ -42,6 +53,14 @@ namespace vilma
         double control_cmd_last_stamp_;
         double gear_cmd_last_stamp_;
 
+        // Methods
+
+        void control_vilma_velocity(double longitudinal_velocity);
+        bool switch_control_mode(int control_mode);
+        bool autonomous_available();
+
+
+        // -- ROS2 elements --
 
         // Parameters
 
@@ -104,22 +123,13 @@ namespace vilma
 
         /* Messages */
 
-        builtin_interfaces::msg::Time current_stamp_;
-
         std_msgs::msg::Float64MultiArray joystick_ma_msg_;
-        std_msgs::msg::Float64MultiArray state_ma_msg_;
         std::vector<double> joystick_ma_msg_data_;
 
         /* Callbacks */
 
         void state_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg);
         void sensors_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg);
-
-        // Methods
-
-        void control_vilma_velocity(double longitudinal_velocity);
-        bool switch_control_mode(int control_mode);
-        bool autonomous_available();
     };
 
 } // namespace vilma

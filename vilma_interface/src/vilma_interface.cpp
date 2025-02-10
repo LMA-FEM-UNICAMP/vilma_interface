@@ -110,6 +110,9 @@ namespace vilma
 
     void VilmaInterface::gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg)
     {
+        //* Updating last time stamp for this topic
+        gear_cmd_last_stamp_ = static_cast<double>(msg->stamp.sec) + static_cast<double>(msg->stamp.nanosec) * 1e-9;
+
         //* Selecting gear state from Autoware command
         switch (msg->command)
         {
@@ -129,9 +132,6 @@ namespace vilma
         default:
             break;
         }
-
-        //* Updating last time stamp for this topic
-        gear_cmd_last_stamp_ = static_cast<double>(msg->stamp.sec) + static_cast<double>(msg->stamp.nanosec) * 1e-9;
     }
 
     void VilmaInterface::control_mode_cmd_callback(
@@ -144,75 +144,116 @@ namespace vilma
 
     void VilmaInterface::state_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg)
     {
-
-        state_ma_msg_ = *msg;
-
-        autoware_vehicle_msgs::msg::SteeringReport steering_report_msg_;
-        autoware_vehicle_msgs::msg::VelocityReport velocity_report_msg_;
-
-        current_stamp_.sec = static_cast<int32_t>(this->get_clock()->now().seconds());
-        current_stamp_.nanosec = this->get_clock()->now().nanoseconds() - current_stamp_.sec * 1e9;
-        double current_time = this->get_clock()->now().seconds();
-
-        steering_report_msg_.stamp = current_stamp_;
-        steering_report_msg_.steering_tire_angle = msg->data[static_cast<int>(StateMA::STEER_TIRE_ANGLE)];
-        steering_report_pub_->publish(steering_report_msg_);
-
-        velocity_report_msg_.header.stamp = current_stamp_;
-        velocity_report_msg_.header.frame_id = std::string("base_link");
-        velocity_report_msg_.lateral_velocity = msg->data[static_cast<int>(StateMA::LATERAL_VELOCITY)];
-        velocity_report_msg_.longitudinal_velocity = msg->data[static_cast<int>(StateMA::LONGITUDINAL_SPEED)];
-        velocity_report_msg_.heading_rate = msg->data[static_cast<int>(StateMA::ANGULAR_YAW_SPEED)];
-        velocity_report_pub_->publish(velocity_report_msg_);
-
-        if (control_mode_msg_.mode == control_mode_msg_.AUTONOMOUS && control_mode_msg_.mode == control_mode_msg_.AUTONOMOUS_VELOCITY_ONLY)
-        {
-
-            //* Check if control_cmd_msg_ message is valid
-            if (current_time - control_cmd_last_stamp_ > control_cmd_timeout_ms_)
-            {
-                //* If not, change vehicle to manual mode
-                // TODO: Set a emergency mode in future...
-                switch_control_mode(autoware_vehicle_msgs::srv::ControlModeCommand::Request::MANUAL); // ! Maybe use this time of data is odd...
-            }
-            else
-            {
-                //* Control vehicle longitudinal velocity
-                control_vilma_velocity(msg->data[static_cast<int>(StateMA::LONGITUDINAL_SPEED)]);
-            }
-        }
-
-        control_mode_msg_.stamp = current_stamp_;
-        control_mode_pub_->publish(control_mode_msg_);
-
-        joystick_ma_msg_.data = joystick_ma_msg_data_;
-        joystick_ma_pub_->publish(joystick_ma_msg_);
-
         //* Updating last time stamp for this topic
         state_ma_last_stamp_ = msg->data[static_cast<int>(StateMA::ROS_TIME)];
+
+        std_msgs::msg::Header header;
+
+        header.frame_id = std::string("base_link");
+        header.stamp = this->get_clock()->now();
+
+        /* Steering report publisher */
+        {
+            autoware_vehicle_msgs::msg::SteeringReport steering_report_msg_;
+            steering_report_msg_.stamp = header.stamp;
+            steering_report_msg_.steering_tire_angle = msg->data[static_cast<int>(StateMA::STEER_TIRE_ANGLE)];
+            steering_report_pub_->publish(steering_report_msg_);
+        }
+
+        /* Velocity report publisher */
+        {
+            autoware_vehicle_msgs::msg::VelocityReport velocity_report_msg_;
+            velocity_report_msg_.header = header;
+            velocity_report_msg_.lateral_velocity = msg->data[static_cast<int>(StateMA::LATERAL_VELOCITY)];
+            velocity_report_msg_.longitudinal_velocity = msg->data[static_cast<int>(StateMA::LONGITUDINAL_SPEED)];
+            velocity_report_msg_.heading_rate = msg->data[static_cast<int>(StateMA::ANGULAR_YAW_SPEED)];
+            velocity_report_pub_->publish(velocity_report_msg_);
+        }
+
+        /* Vehicle velocity control */
+        {
+            if (control_mode_msg_.mode == control_mode_msg_.AUTONOMOUS && control_mode_msg_.mode == control_mode_msg_.AUTONOMOUS_VELOCITY_ONLY)
+            {
+
+                //* Check if control_cmd_msg_ message is valid
+                if (this->get_clock()->now().seconds() - control_cmd_last_stamp_ > control_cmd_timeout_ms_)
+                {
+                    //* If not, change vehicle to manual mode
+                    // TODO: Set a emergency mode in future...
+                    switch_control_mode(autoware_vehicle_msgs::srv::ControlModeCommand::Request::MANUAL); // ! Maybe use this time of data is odd...
+                }
+                else
+                {
+                    //* Control vehicle longitudinal velocity
+                    control_vilma_velocity(msg->data[static_cast<int>(StateMA::LONGITUDINAL_SPEED)]);
+                }
+            }
+
+            joystick_ma_msg_.data = joystick_ma_msg_data_;
+            joystick_ma_pub_->publish(joystick_ma_msg_);
+        }
+
+        /* Control mode report publisher */
+        {
+            control_mode_msg_.stamp = header.stamp;
+            control_mode_pub_->publish(control_mode_msg_);
+        }
     }
 
     void VilmaInterface::sensors_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg)
     {
-        current_stamp_.sec = static_cast<int32_t>(this->get_clock()->now().seconds());
-        current_stamp_.nanosec = this->get_clock()->now().nanoseconds() - current_stamp_.sec * 1e9;
-
-        autoware_vehicle_msgs::msg::GearReport gear_report_msg_;
-
-        gear_report_msg_.stamp = current_stamp_;
-        gear_report_msg_.report = msg->data[static_cast<int>(SensorsMA::GEAR_STATE)];
-        gear_report_pub_->publish(gear_report_msg_);
-
-        // TODO: Check brake pressure
-
-        // TODO: Check EMERGENCY BUTTON
-
-        // TODO: Check steering wheel user torque
-
-        // TODO: CHECK Operational state, GEAR, STEER, GAS and BRAKE commands and status, if applicable, change control mode.
 
         //* Updating last time stamp for this topic
         sensors_ma_last_stamp_ = msg->data[static_cast<int>(SensorsMA::ROS_TIME)];
+
+        builtin_interfaces::msg::Time stamp = this->get_clock()->now();
+
+        /* Gear report publisher */
+        {
+            autoware_vehicle_msgs::msg::GearReport gear_report_msg_;
+
+            gear_report_msg_.stamp = stamp;
+
+            switch (static_cast<int>(msg->data[static_cast<int>(SensorsMA::GEAR_STATE)]))
+            {
+            case static_cast<int>(SensorsMA::GEAR_OFF):
+                gear_report_msg_.report = autoware_vehicle_msgs::msg::GearCommand::NEUTRAL;
+                break;
+
+            case static_cast<int>(SensorsMA::GEAR_N):
+                gear_report_msg_.report = autoware_vehicle_msgs::msg::GearCommand::NONE;
+                break;
+
+            case static_cast<int>(SensorsMA::GEAR_R):
+                gear_report_msg_.report = autoware_vehicle_msgs::msg::GearCommand::REVERSE;
+                break;
+
+            case static_cast<int>(SensorsMA::GEAR_D):
+                gear_report_msg_.report = autoware_vehicle_msgs::msg::GearCommand::DRIVE;
+                break;
+
+            default:
+                break;
+            }
+
+            gear_report_pub_->publish(gear_report_msg_);
+        }
+
+        // TODO: Check brake pressure
+        {
+        }
+
+        // TODO: Check EMERGENCY BUTTON
+        {
+        }
+
+        // TODO: Check steering wheel user torque
+        {
+        }
+
+        // TODO: CHECK Operational state, GEAR, STEER, GAS and BRAKE commands and status, if applicable, change control mode.
+        {
+        }
     }
 
     void VilmaInterface::control_vilma_velocity(double longitudinal_velocity)
@@ -278,6 +319,7 @@ namespace vilma
             }
             else
             {
+                RCLCPP_ERROR(this->get_logger(), "Fail to switch control mode to autonomous. Autonomous mode unavailable.");
                 return false;
             }
 
@@ -302,6 +344,7 @@ namespace vilma
             }
             else
             {
+                RCLCPP_ERROR(this->get_logger(), "Fail to switch control mode to autonomous. Autonomous mode unavailable.");
                 return false;
             }
             break;
@@ -328,6 +371,7 @@ namespace vilma
             }
             else
             {
+                RCLCPP_ERROR(this->get_logger(), "Fail to switch control mode to autonomous. Autonomous mode unavailable.");
                 return false;
             }
 
@@ -351,12 +395,9 @@ namespace vilma
             return true;
             break;
 
-        case autoware_vehicle_msgs::srv::ControlModeCommand::Request::NO_COMMAND:
-            // ? Same as MANUAL?
-            return true;
-            break;
-
         default:
+            RCLCPP_ERROR(this->get_logger(), "Fail to switch control mode. Unsupported mode.");
+            return false;
             break;
         }
 

@@ -30,7 +30,11 @@ enum class SensorsMA {
     BRAKE_USER_PRESSURE,
     BRAKE_FRONT_ENCODER,
     NONE,
-    GEAR_STATE
+    GEAR_STATE,
+    GEAR_OFF = 0,
+    GEAR_N = 1,
+    GEAR_R = 2,
+    GEAR_D = 3
 };
 
 enum class StateMA {
