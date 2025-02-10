@@ -23,10 +23,7 @@
 #include <string>
 
 #include "vilma_interface/vilma_ma_labeling.hpp"
-#include "vilma_velocity_control/PIDLMA.hpp"
-
-#define BRAKE_DEADBAND -0.1
-
+#include "vilma_interface/PIDLMA.hpp"
 
 namespace vilma
 {
@@ -36,16 +33,32 @@ namespace vilma
         VilmaInterface();
 
     private:
-
-        // Objects
+        // Attributes
 
         PIDLMA velocity_controller_;
-        
+
+        double state_ma_last_stamp_;
+        double sensors_ma_last_stamp_;
+        double control_cmd_last_stamp_;
+        double gear_cmd_last_stamp_;
+
+
         // Parameters
 
-        double max_steer_tire_angle;
-        double brake_deadband;
-        double joystick_ma_time_validity;
+        double max_steer_tire_angle_;
+        double brake_deadband_;
+        int joystick_ma_time_validity_ms_;
+        int vilma_ma_msg_timeout_ms_;
+        int control_cmd_timeout_ms_;
+        int lifecycle_monitor_period_ms_;
+
+        // Timers
+
+        rclcpp::TimerBase::SharedPtr lifecycle_monitor_timer_;
+
+        // Callbacks
+
+        void lifecycle_monitor_callback();
 
         // Autoware
 
@@ -77,8 +90,7 @@ namespace vilma
         void gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg);
         void control_mode_cmd_callback(const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
                                        const autoware_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response);
-        
-        
+
         // VILMA
 
         /* Subscribers */
@@ -92,6 +104,8 @@ namespace vilma
 
         /* Messages */
 
+        builtin_interfaces::msg::Time current_stamp_;
+
         std_msgs::msg::Float64MultiArray joystick_ma_msg_;
         std_msgs::msg::Float64MultiArray state_ma_msg_;
         std::vector<double> joystick_ma_msg_data_;
@@ -104,6 +118,8 @@ namespace vilma
         // Methods
 
         void control_vilma_velocity(double longitudinal_velocity);
+        bool switch_control_mode(int control_mode);
+        bool autonomous_available();
     };
 
 } // namespace vilma
