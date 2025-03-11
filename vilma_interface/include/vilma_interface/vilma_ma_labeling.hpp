@@ -85,5 +85,21 @@ enum class JoystickMA {
     JOYSTICK_MA_DATA_LENGTH = 10
 };
 
+enum class OperationModeMA {
+    INITIAL_STATE_MODE = 1,
+    MANUAL_MODE = 2,
+    JOYSTICK_MODE = 3
+};
+
+enum class TxTypeMA {
+    SENSORS_MA = 1000,
+    STATE_MA = 2000
+};
+
+enum class RxTypeMA {
+    ONLY_RECEIVE_DATA = 0,
+    JOYSTICK_MODE_COMMAND = 30
+};
+
 
 #endif  // VILMA_MA_LABELING__HPP_
