@@ -1,8 +1,10 @@
 /*
- * PIDLMA.hpp
+ * pidlma.hpp
  *
  *  Created on: Nov 6, 2015
  *      Author: Olmer
+ *  Updated on: Mar 11, 2024
+ *      Maintainer: Toffanetto
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,42 +25,20 @@
 
 class PIDLMA
 {
-  double kp, kd, ki, kimax;
-  double error_ant;
-  double error_sum;
+  double kp_, kd_, ki_;
+  double error_ant_;
+  double error_sum_;
+  double t_ant_;
+  double u_;
 
 public:
-  PIDLMA()
-  {
-    configure(0.0, 0.0, 0.0, 0.0);
-  };
+  PIDLMA();
 
-  void configure(double k_p, double k_d, double k_i, double k_i_max)
-  {
-    kp = k_p;
-    kd = k_d;
-    ki = k_i;
-    kimax = k_i_max;
-    error_ant = 0;
-    error_sum = 0;
-  };
+  void configure(double k_p, double k_d, double k_i, double t);
 
-  void reset()
-  {
-    error_ant = 0;
-    error_sum = 0;
-  }
+  void reset();
 
-  double calculate(double error, double dt)
-  {
-    double u;
-    error_sum += error * dt;                                         // integral
-    error_sum = std::max(-1.0 * kimax, std::min(error_sum, kimax));  // stauration integral
-
-    u = error * kp + kd * (error - error_ant) / dt + ki * error_sum;
-    error_ant = error;
-    return u;
-  };
+  double calculate(double value, double reference, double t);
 };
 
 #endif /* SRC_PIDLMA_HPP_ */

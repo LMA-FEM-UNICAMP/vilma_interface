@@ -15,6 +15,7 @@ find_package(autoware_vehicle_msgs REQUIRED)
 ament_auto_add_executable(vilma_interface_node 
   src/vilma_interface_node.cpp
   src/vilma_interface.cpp
+  include/maudp/protocoloc.cpp
 )
 
 

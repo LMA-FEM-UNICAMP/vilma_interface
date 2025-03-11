@@ -33,8 +33,8 @@
 // Personal libraries includes
 
 #include "vilma_interface/vilma_ma_labeling.hpp"
-#include "vilma_interface/PIDLMA.hpp"
-#include "vilma_interface/maudp.h"
+#include "pidlma/pidlma.hpp"
+#include "maudp/maudp.h"
 
 // UDP libraries
 
