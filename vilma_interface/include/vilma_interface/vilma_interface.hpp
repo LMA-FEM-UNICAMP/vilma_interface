@@ -1,3 +1,27 @@
+/*
+ * vilma_interface.hpp
+ *
+ *  Created on: Mar 12, 2025
+ *
+ *  Author: Gabriel Toffanetto França da Rocha
+ *
+ *  Laboratory of Autonomous Mobility (LMA)
+ *  School of Mechanical Engineering (FEM)
+ *  University of Campinas (Unicamp)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 
 #ifndef vilma_interface__HPP_
 #define vilma_interface__HPP_
@@ -50,26 +74,22 @@ namespace vilma
         ~VilmaInterface();
 
     private:
-        // Parameters
 
-        bool autonomous_shift_enable_;
+        // Parameters
 
         // Attributes
 
+        microautobox::maudp ma_udp_client;
+        std::mutex mutex_joystick_command_;
         std::vector<double> joystick_command_;
         std::vector<double> to_ma_vector_;
         std::vector<double> from_ma_vector_;
-        int ma_operation_mode_;
         int to_ma_length_;
         int from_ma_length_;
 
-        microautobox::maudp ma_udp_client;
-
-        std::mutex mutex_joystick_command_;
-
+        int ma_operation_mode_;
         uint8_t vilma_control_mode_;
-
-        rclcpp::Time last_stamp_;
+        bool change_control_mode_enabled_;
 
         /* Vehicle */
         double brake_deadband_;
@@ -79,14 +99,13 @@ namespace vilma
         double max_speed_m_s_;
         double speed_reference_ramp_rate_;
         double brake_user_pressure_set_emergency_;
-        bool change_control_mode_enabled_;
+        bool autonomous_shift_enable_;
 
         PIDLMA velocity_controller_;
 
         // Methods
 
         unsigned short to_ma();
-
         void from_ma(int type_tx, rclcpp::Time stamp);
 
         bool set_control_mode(uint8_t control_mode);
@@ -97,6 +116,7 @@ namespace vilma
 
         // Timers
 
+        rclcpp::Time last_stamp_;
         rclcpp::TimerBase::SharedPtr ma_timer_;
         rclcpp::TimerBase::SharedPtr ma_sleep_;
 

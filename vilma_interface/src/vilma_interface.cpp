@@ -1,3 +1,27 @@
+/*
+ * vilma_interface.cpp
+ *
+ *  Created on: Mar 12, 2025
+ *
+ *  Author: Gabriel Toffanetto França da Rocha
+ *
+ *  Laboratory of Autonomous Mobility (LMA)
+ *  School of Mechanical Engineering (FEM)
+ *  University of Campinas (Unicamp)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 
 #include "vilma_interface/vilma_interface.hpp"
 
@@ -68,7 +92,7 @@ namespace vilma
         brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
 
         /* Vehicle variables initialization */
-        ma_operation_mode_ = static_cast<int>(OperationModeMA::MANUAL_MODE);
+        ma_operation_mode_ = OperationModeMA::MANUAL_MODE;
         vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
         change_control_mode_enabled_ = true;
 
@@ -78,7 +102,7 @@ namespace vilma
 
         joystick_command_.reserve(to_ma_length_);
         joystick_command_.resize(to_ma_length_, 0.0);
-        joystick_command_[static_cast<int>(JoystickMA::TIME_VALIDITY)] = joystick_command_time_validity_ms;
+        joystick_command_[JoystickMA::TIME_VALIDITY] = joystick_command_time_validity_ms;
 
         to_ma_vector_.reserve(to_ma_length_);
         to_ma_vector_.resize(to_ma_length_, 0.0);
@@ -188,7 +212,7 @@ namespace vilma
 
         if (to_ma_vector_[0] == 0.0)
         {
-            rx_type = static_cast<int>(RxTypeMA::ONLY_RECEIVE_DATA);
+            rx_type = RxTypeMA::ONLY_RECEIVE_DATA;
             to_ma_vector_[0] = ma_operation_mode_;
             to_ma_vector_[1] = this->get_clock()->now().seconds();
             to_ma_vector_[2] = 152;
@@ -198,7 +222,7 @@ namespace vilma
 
         else
         {
-            rx_type = static_cast<int>(RxTypeMA::JOYSTICK_MODE_COMMAND);
+            rx_type = RxTypeMA::JOYSTICK_MODE_COMMAND;
         }
 
         return rx_type;
@@ -221,7 +245,7 @@ namespace vilma
 
         switch (type_tx)
         {
-        case static_cast<int>(TxTypeMA::SENSORS_MA):
+        case TxTypeMA::SENSORS_MA:
         {
             //* Publishing debug topic
             sensors_ma_msg.data[0] = stamp.seconds();
@@ -229,7 +253,7 @@ namespace vilma
             sensors_ma_pub_->publish(sensors_ma_msg);
 
             //* Emergency -- User braking
-            if (sensors_ma_msg.data[static_cast<int>(SensorsMA::BRAKE_USER_PRESSURE)] >= brake_user_pressure_set_emergency_)
+            if (sensors_ma_msg.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_)
             {
                 set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
                 change_control_mode_enabled_ = false;
@@ -243,21 +267,21 @@ namespace vilma
             autoware_vehicle_msgs::msg::GearReport gear_report_msg;
             gear_report_msg.stamp = header_msg.stamp;
 
-            switch (static_cast<int>(sensors_ma_msg.data[static_cast<int>(SensorsMA::GEAR_STATE)]))
+            switch (static_cast<int>(sensors_ma_msg.data[SensorsMA::GEAR_STATE]))
             {
-            case static_cast<int>(SensorsMA::GEAR_OFF):
+            case SensorsMA::GEAR_OFF:
                 gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::NONE;
                 break;
 
-            case static_cast<int>(SensorsMA::GEAR_D):
+            case SensorsMA::GEAR_D:
                 gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::DRIVE;
                 break;
 
-            case static_cast<int>(SensorsMA::GEAR_R):
+            case SensorsMA::GEAR_R:
                 gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::REVERSE;
                 break;
 
-            case static_cast<int>(SensorsMA::GEAR_N):
+            case SensorsMA::GEAR_N:
                 gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::NEUTRAL;
                 break;
 
@@ -270,7 +294,7 @@ namespace vilma
             break;
         }
 
-        case static_cast<int>(TxTypeMA::STATE_MA):
+        case TxTypeMA::STATE_MA:
         {
             //* Publish debug topic
             state_ma_msg.data[0] = stamp.seconds();
@@ -280,15 +304,15 @@ namespace vilma
             //* Publish velocity status topic
             autoware_vehicle_msgs::msg::VelocityReport velocity_report_msg;
             velocity_report_msg.header = header_msg;
-            velocity_report_msg.heading_rate = state_ma_msg.data[static_cast<int>(StateMA::ANGULAR_YAW_SPEED)];
-            velocity_report_msg.lateral_velocity = state_ma_msg.data[static_cast<int>(StateMA::LATERAL_VELOCITY)];
-            velocity_report_msg.longitudinal_velocity = state_ma_msg.data[static_cast<int>(StateMA::LONGITUDINAL_SPEED)];
+            velocity_report_msg.heading_rate = state_ma_msg.data[StateMA::ANGULAR_YAW_SPEED];
+            velocity_report_msg.lateral_velocity = state_ma_msg.data[StateMA::LATERAL_VELOCITY];
+            velocity_report_msg.longitudinal_velocity = state_ma_msg.data[StateMA::LONGITUDINAL_SPEED];
             velocity_report_pub_->publish(velocity_report_msg);
 
             //* Publish steering status topic
             autoware_vehicle_msgs::msg::SteeringReport steering_report_msg;
             steering_report_msg.stamp = header_msg.stamp;
-            steering_report_msg.steering_tire_angle = state_ma_msg.data[static_cast<int>(StateMA::STEER_TIRE_ANGLE)];
+            steering_report_msg.steering_tire_angle = state_ma_msg.data[StateMA::STEER_TIRE_ANGLE];
             steering_report_pub_->publish(steering_report_msg);
 
             //* Publish control mode report topic
@@ -320,13 +344,13 @@ namespace vilma
             case autoware_vehicle_msgs::msg::ControlModeReport::MANUAL:
 
                 mutex_joystick_command_.lock();
-                joystick_command_[static_cast<int>(JoystickMA::ROS_TIME)] = this->get_clock()->now().seconds();
+                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[static_cast<int>(JoystickMA::GAS_COMMAND)] = static_cast<int>(JoystickMA::GAS_COMMAND_OFF);
+                joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_OFF;
 
-                joystick_command_[static_cast<int>(JoystickMA::STEER_COMMAND)] = static_cast<int>(JoystickMA::STEER_COMMAND_OFF);
+                joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
 
-                joystick_command_[static_cast<int>(JoystickMA::GEAR_STATE)] = static_cast<int>(JoystickMA::GEAR_COMMAND_OFF);
+                joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_OFF;
                 mutex_joystick_command_.unlock();
 
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
@@ -338,11 +362,11 @@ namespace vilma
             case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS:
 
                 mutex_joystick_command_.lock();
-                joystick_command_[static_cast<int>(JoystickMA::ROS_TIME)] = this->get_clock()->now().seconds();
+                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[static_cast<int>(JoystickMA::GAS_COMMAND)] = static_cast<int>(JoystickMA::GAS_COMMAND_POSITION);
+                joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
 
-                joystick_command_[static_cast<int>(JoystickMA::STEER_COMMAND)] = static_cast<int>(JoystickMA::STEER_COMMAND_POSITION);
+                joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
                 mutex_joystick_command_.unlock();
 
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS;
@@ -354,11 +378,11 @@ namespace vilma
             case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY:
 
                 mutex_joystick_command_.lock();
-                joystick_command_[static_cast<int>(JoystickMA::ROS_TIME)] = this->get_clock()->now().seconds();
+                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[static_cast<int>(JoystickMA::GAS_COMMAND)] = static_cast<int>(JoystickMA::GAS_COMMAND_OFF);
+                joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_OFF;
 
-                joystick_command_[static_cast<int>(JoystickMA::STEER_COMMAND)] = static_cast<int>(JoystickMA::STEER_COMMAND_POSITION);
+                joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
                 mutex_joystick_command_.unlock();
 
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY;
@@ -370,11 +394,11 @@ namespace vilma
             case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY:
 
                 mutex_joystick_command_.lock();
-                joystick_command_[static_cast<int>(JoystickMA::ROS_TIME)] = this->get_clock()->now().seconds();
+                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[static_cast<int>(JoystickMA::GAS_COMMAND)] = static_cast<int>(JoystickMA::GAS_COMMAND_POSITION);
+                joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
 
-                joystick_command_[static_cast<int>(JoystickMA::STEER_COMMAND)] = static_cast<int>(JoystickMA::STEER_COMMAND_OFF);
+                joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
                 mutex_joystick_command_.unlock();
 
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY;
@@ -482,7 +506,7 @@ namespace vilma
         double brake_value = 0.0;
         double brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
 
-        double control_action = velocity_controller_.calculate(state_ma_msg.data[static_cast<int>(StateMA::LONGITUDINAL_SPEED)],
+        double control_action = velocity_controller_.calculate(state_ma_msg.data[StateMA::LONGITUDINAL_SPEED],
                                                                msg->longitudinal.velocity, this->get_clock()->now().seconds());
 
         // Negative control action above engine brake limit
@@ -502,14 +526,14 @@ namespace vilma
         }
 
         mutex_joystick_command_.lock();
-        joystick_command_[static_cast<int>(JoystickMA::ROS_TIME)] = this->get_clock()->now().seconds();
+        joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-        joystick_command_[static_cast<int>(JoystickMA::STEER_VALUE)] = get_steering_value(msg->lateral.steering_tire_angle);
+        joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(msg->lateral.steering_tire_angle);
 
-        joystick_command_[static_cast<int>(JoystickMA::GAS_VALUE)] = get_steering_value(msg->lateral.steering_tire_angle);
+        joystick_command_[JoystickMA::GAS_VALUE] = get_steering_value(msg->lateral.steering_tire_angle);
 
-        joystick_command_[static_cast<int>(JoystickMA::BRAKE_COMMAND)] = brake_command;
-        joystick_command_[static_cast<int>(JoystickMA::BRAKE_VALUE)] = brake_value;
+        joystick_command_[JoystickMA::BRAKE_COMMAND] = brake_command;
+        joystick_command_[JoystickMA::BRAKE_VALUE] = brake_value;
         mutex_joystick_command_.unlock();
     }
 
@@ -527,25 +551,25 @@ namespace vilma
             {
             case autoware_vehicle_msgs::msg::GearCommand::NEUTRAL:
                 mutex_joystick_command_.lock();
-                joystick_command_[static_cast<int>(JoystickMA::ROS_TIME)] = this->get_clock()->now().seconds();
+                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[static_cast<int>(JoystickMA::GEAR_STATE)] = static_cast<int>(JoystickMA::GEAR_COMMAND_NEUTRAL);
+                joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_NEUTRAL;
                 mutex_joystick_command_.unlock();
                 break;
 
             case autoware_vehicle_msgs::msg::GearCommand::REVERSE:
                 mutex_joystick_command_.lock();
-                joystick_command_[static_cast<int>(JoystickMA::ROS_TIME)] = this->get_clock()->now().seconds();
+                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[static_cast<int>(JoystickMA::GEAR_STATE)] = static_cast<int>(JoystickMA::GEAR_COMMAND_REVERSE);
+                joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_REVERSE;
                 mutex_joystick_command_.unlock();
                 break;
 
             case autoware_vehicle_msgs::msg::GearCommand::DRIVE:
                 mutex_joystick_command_.lock();
-                joystick_command_[static_cast<int>(JoystickMA::ROS_TIME)] = this->get_clock()->now().seconds();
+                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[static_cast<int>(JoystickMA::GEAR_STATE)] = static_cast<int>(JoystickMA::GEAR_COMMAND_DRIVE);
+                joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_DRIVE;
                 mutex_joystick_command_.unlock();
                 break;
 
