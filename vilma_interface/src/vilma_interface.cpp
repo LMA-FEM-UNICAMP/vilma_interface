@@ -3,14 +3,23 @@
 
 namespace vilma
 {
+
+    /**
+     *
+     * @brief Class constructor
+     * @param None
+     * @return void
+     */
     VilmaInterface::VilmaInterface() : Node("vilma_interface")
     {
-        // Placeholders
+        /// Placeholders
+
         using std::placeholders::_1;
         using std::placeholders::_2;
 
-        // Parameters
+        /// Parameters
 
+        /* ROS2 parameters declaration*/
         this->declare_parameter("ma_timer_period_ms", 10);
         this->declare_parameter("ma_sleep_period_min", 2);
         this->declare_parameter("pc_udp_port", 5001);
@@ -30,20 +39,25 @@ namespace vilma
         this->declare_parameter("brake_user_pressure_emergency", 10.0);
         this->declare_parameter("joystick_command_time_validity_ms", 500);
 
+        /* UDP communication parameters */
         int pc_udp_port = this->get_parameter("pc_udp_port").as_int();
         int ma_udp_port = this->get_parameter("ma_udp_port").as_int();
         int udp_timeout_ms = this->get_parameter("udp_timeout_ms").as_int();
         std::string ma_ip = this->get_parameter("ma_ip").as_string();
 
+        /* PID control parameters*/
         double kp_vel = this->get_parameter("kp_vel").as_double();
         double ki_vel = this->get_parameter("ki_vel").as_double();
         double kd_vel = this->get_parameter("kd_vel").as_double();
 
+        /* MA's control command time validity*/
         double joystick_command_time_validity_ms = this->get_parameter("joystick_command_time_validity_ms").as_int();
 
+        /* Timers period */
         ma_timer_period_ms_ = this->get_parameter("ma_timer_period_ms").as_int();
         ma_sleep_period_min_ = this->get_parameter("ma_sleep_period_min").as_int();
 
+        /* Vehicle parameters */
         brake_deadband_ = this->get_parameter("brake_deadband").as_double();
         max_steering_tire_angle_rad_ = this->get_parameter("max_steering_tire_angle_rad").as_double();
         max_gas_value_ = this->get_parameter("max_gas_value").as_double();
@@ -53,12 +67,12 @@ namespace vilma
         autonomous_shift_enable_ = this->get_parameter("autonomous_shift_enable").as_bool();
         brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
 
-        velocity_controller_.configure(kp_vel, kd_vel, ki_vel, this->get_clock()->now().seconds(), speed_reference_ramp_rate_);
-
+        /* Vehicle variables initialization */
         ma_operation_mode_ = static_cast<int>(OperationModeMA::MANUAL_MODE);
         vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
         change_control_mode_enabled_ = true;
 
+        /* MA messages configuration */
         to_ma_length_ = 10;
         from_ma_length_ = 30;
 
@@ -77,10 +91,16 @@ namespace vilma
         state_ma_msg.data.reserve(from_ma_length_ + 1);
         state_ma_msg.data.resize(from_ma_length_ + 1, 0.0);
 
+        /* Configure UDP communication wih MA*/
         if (!ma_udp_client.configure(pc_udp_port, ma_udp_port, ma_ip, boost::posix_time::millisec(udp_timeout_ms), to_ma_length_, from_ma_length_))
         {
             RCLCPP_ERROR(this->get_logger(), "UDP port of PC is not accessible");
         }
+
+        /* Configure velocity controller */
+        velocity_controller_.configure(kp_vel, kd_vel, ki_vel, this->get_clock()->now().seconds(), speed_reference_ramp_rate_);
+
+        /// ROS2 entities
 
         rclcpp::SubscriptionOptions autoware_sub_options;
         rclcpp::SubscriptionOptions debug_sub_options;
@@ -101,6 +121,7 @@ namespace vilma
 
         ma_sleep_->cancel();
 
+        /* From Autoware */
         control_cmd_sub_ = this->create_subscription<autoware_control_msgs::msg::Control>(
             "/control/command/control_cmd", rclcpp::QoS{1}, std::bind(&VilmaInterface::control_cmd_callback, this, _1),
             autoware_sub_options);
@@ -112,6 +133,10 @@ namespace vilma
         engage_sub_ = this->create_subscription<autoware_vehicle_msgs::msg::Engage>(
             "/vehicle/engage", rclcpp::QoS{1}, std::bind(&VilmaInterface::engage_callback, this, _1), autoware_sub_options);
 
+        control_mode_request_server_ = this->create_service<autoware_vehicle_msgs::srv::ControlModeCommand>(
+            "/control/control_mode_request", std::bind(&VilmaInterface::control_mode_request_callback, this, _1, _2));
+
+        /* To Autoware */
         control_mode_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::ControlModeReport>(
             "/vehicle/status/control_mode", rclcpp::QoS{1});
 
@@ -124,9 +149,7 @@ namespace vilma
         velocity_report_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::VelocityReport>(
             "/vehicle/status/velocity_status", rclcpp::QoS{1});
 
-        control_mode_request_server_ = this->create_service<autoware_vehicle_msgs::srv::ControlModeCommand>(
-            "/control/control_mode_request", std::bind(&VilmaInterface::control_mode_request_callback, this, _1, _2));
-
+        /* Debug topics */
         joystick_ma_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
             "/vilma_ma_debug/joystick_ma", rclcpp::QoS{1}, std::bind(&VilmaInterface::joystick_ma_callback, this, _1), debug_sub_options);
 
@@ -137,11 +160,24 @@ namespace vilma
             this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/sensors_ma", rclcpp::QoS{1});
     }
 
+    /**
+     *
+     * @brief Class destructor
+     * @param
+     * @return
+     */
     VilmaInterface::~VilmaInterface()
     {
+        //* Closing UDP communication with MA.
         ma_udp_client.close_udp_socket();
     }
 
+    /**
+     *
+     * @brief Build vector with message data from Autoware to MA.
+     * @param None
+     * @return RX type value of the UDP message
+     */
     unsigned short VilmaInterface::to_ma()
     {
         unsigned short rx_type;
@@ -168,6 +204,13 @@ namespace vilma
         return rx_type;
     }
 
+    /**
+     *
+     * @brief Process data received from MA through UDP.
+     * @param type_tx type of UDP message
+     * @param stamp time when the message was requested
+     * @return void
+     */
     void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
     {
 
@@ -262,6 +305,12 @@ namespace vilma
         }
     }
 
+    /**
+     *
+     * @brief Change vehicle control mode configuring the command values in the joystick message.
+     * @param control_mode desired control mode in autoware_vehicle_msgs::msg::ControlModeReport constants format.
+     * @return feedback of success or fail in change control mode.
+     */
     bool VilmaInterface::set_control_mode(uint8_t control_mode)
     {
         if (change_control_mode_enabled_)
@@ -345,6 +394,12 @@ namespace vilma
         }
     }
 
+    /**
+     *
+     * @brief Timer callback that make the UDP request to MA, sending and receiving data.
+     * @param None
+     * @return void
+     */
     void VilmaInterface::ma_timer_callback()
     {
         rclcpp::Time stamp = this->get_clock()->now();
@@ -383,6 +438,12 @@ namespace vilma
         mutex_joystick_command_.unlock();
     }
 
+    /**
+     *
+     * @brief Timer callback for wait some time to reconnect MA UDP communication. 
+     * @param None
+     * @return void
+     */
     void VilmaInterface::ma_sleep_callback()
     {
         if (ma_udp_client.open_udp_socket())
@@ -398,11 +459,23 @@ namespace vilma
         ma_timer_->reset();
     }
 
+    /**
+     *
+     * @brief 
+     * @param
+     * @return
+     */
     double VilmaInterface::get_steering_value(double steering_tire_angle_rad)
     {
         return steering_tire_angle_rad / max_steering_tire_angle_rad_;
     }
 
+    /**
+     *
+     * @brief 
+     * @param
+     * @return
+     */
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
         double gas_value = 0.0;
@@ -440,6 +513,12 @@ namespace vilma
         mutex_joystick_command_.unlock();
     }
 
+    /**
+     *
+     * @brief 
+     * @param
+     * @return
+     */
     void VilmaInterface::gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg)
     {
         if (autonomous_shift_enable_)
@@ -476,11 +555,23 @@ namespace vilma
         }
     }
 
+    /**
+     *
+     * @brief 
+     * @param
+     * @return
+     */
     void VilmaInterface::engage_callback(const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr msg)
     {
         set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS);
     }
 
+    /**
+     *
+     * @brief 
+     * @param
+     * @return
+     */
     void VilmaInterface::control_mode_request_callback(
         const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
         const autoware_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response)
@@ -488,6 +579,12 @@ namespace vilma
         response->success = set_control_mode(request->mode);
     }
 
+    /**
+     *
+     * @brief 
+     * @param
+     * @return
+     */
     void VilmaInterface::joystick_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg)
     {
         mutex_joystick_command_.lock();
