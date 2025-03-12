@@ -1,105 +1,140 @@
-#ifndef VILMA_MA_LABELING__HPP_
+/*
+ * vilma_ma_labeling.hpp
+ *
+ *  Created on: Mar 12, 2025
+ *
+ *  Author: Gabriel Toffanetto França da Rocha
+ *
+ *  Laboratory of Autonomous Mobility (LMA)
+ *  School of Mechanical Engineering (FEM)
+ *  University of Campinas (Unicamp)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+ #ifndef VILMA_MA_LABELING__HPP_
 #define VILMA_MA_LABELING__HPP_
 
-enum class SensorsMA {
-    ROS_TIME,
-    TIME_PPC,
-    OPERATION_STATE,
-    STEER_POS,
-    SPEER_SPEED,
-    STEER_STATE,
-    STEER_VM,
-    STEER_T_USER,
-    GAS_VALUE,
-    GAS_USER_VALUE,
-    CURRENT_SENSOR,
-    ACC_COUNTER,
-    ACC_X,
-    ACC_Y,
-    ACC_Z,
-    ATMOSPHERE_PRESSURE,
-    TIME_PCC_BRAKE,
-    BRAKE_STATE,
-    BRAKE_VALUE,
-    BRAKE_WS_FRONT_LEFT,
-    BRAKE_WS_FRONT_RIGHT,
-    BRAKE_WS_BACK_LEFT,
-    BRAKE_WS_BACK_RIGHT,
-    BRAKE_WS_ACC_X,
-    BRAKE_WS_ACC_Y,
-    BRAKE_WS_ACC_Z,
-    BRAKE_WS_GYR_Z,
-    BRAKE_USER_PRESSURE,
-    BRAKE_FRONT_ENCODER,
-    NONE,
-    GEAR_STATE,
-    GEAR_OFF = 0,
-    GEAR_N = 1,
-    GEAR_R = 2,
-    GEAR_D = 3
+class SensorsMA
+{
+public:
+    constexpr static int ROS_TIME = 0;
+    constexpr static int TIME_PPC = 1;
+    constexpr static int OPERATION_STATE = 2;
+    constexpr static int STEER_POS = 3;
+    constexpr static int SPEER_SPEED = 4;
+    constexpr static int STEER_STATE = 5;
+    constexpr static int STEER_VM = 6;
+    constexpr static int STEER_T_USER = 7;
+    constexpr static int GAS_VALUE = 8;
+    constexpr static int GAS_USER_VALUE = 9;
+    constexpr static int CURRENT_SENSOR = 10;
+    constexpr static int ACC_COUNTER = 11;
+    constexpr static int ACC_X = 12;
+    constexpr static int ACC_Y = 13;
+    constexpr static int ACC_Z = 14;
+    constexpr static int ATMOSPHERE_PRESSURE = 15;
+    constexpr static int TIME_PCC_BRAKE = 16;
+    constexpr static int BRAKE_STATE = 17;
+    constexpr static int BRAKE_VALUE = 18;
+    constexpr static int BRAKE_WS_FRONT_LEFT = 19;
+    constexpr static int BRAKE_WS_FRONT_RIGHT = 20;
+    constexpr static int BRAKE_WS_BACK_LEFT = 21;
+    constexpr static int BRAKE_WS_BACK_RIGHT = 22;
+    constexpr static int BRAKE_WS_ACC_X = 23;
+    constexpr static int BRAKE_WS_ACC_Y = 24;
+    constexpr static int BRAKE_WS_ACC_Z = 25;
+    constexpr static int BRAKE_WS_GYR_Z = 26;
+    constexpr static int BRAKE_USER_PRESSURE = 27;
+    constexpr static int BRAKE_FRONT_ENCODER = 28;
+    constexpr static int GEAR_STATE = 30;
+    constexpr static int GEAR_OFF = 0;
+    constexpr static int GEAR_N = 1;
+    constexpr static int GEAR_R = 2;
+    constexpr static int GEAR_D = 3;
 };
 
-enum class StateMA {
-    ROS_TIME,
-    TIME_PCC,
-    STEER_ANGLE,
-    STEER_SPEED_ANGLE,
-    STEER_TIRE_ANGLE,
-    STEER_TIRE_SPEED_ANGLE,
-    LATERAL_VELOCITY,
-    ANGULAR_YAW_SPEED,
-    X_GLOBAL_POSITION,
-    Y_GLOBAL_POSITION,
-    YAW_ANGLE,
-    LONGITUDINAL_SPEED,
-    USER_TORQUE,
-    STEER_MOTOR_VOLTAGE,
-    YAW_DC_ERROR
+class StateMA
+{
+public:
+    constexpr static int ROS_TIME = 0;
+    constexpr static int TIME_PCC = 1;
+    constexpr static int STEER_ANGLE = 2;
+    constexpr static int STEER_SPEED_ANGLE = 3;
+    constexpr static int STEER_TIRE_ANGLE = 4;
+    constexpr static int STEER_TIRE_SPEED_ANGLE = 5;
+    constexpr static int LATERAL_VELOCITY = 6;
+    constexpr static int ANGULAR_YAW_SPEED = 7;
+    constexpr static int X_GLOBAL_POSITION = 8;
+    constexpr static int Y_GLOBAL_POSITION = 9;
+    constexpr static int YAW_ANGLE = 10;
+    constexpr static int LONGITUDINAL_SPEED = 11;
+    constexpr static int USER_TORQUE = 12;
+    constexpr static int STEER_MOTOR_VOLTAGE = 13;
+    constexpr static int YAW_DC_ERROR = 14;
 };
 
-enum class JoystickMA {
-    ROS_TIME,
-    TIME_VALIDITY,
-    BRAKE_COMMAND,
-    BRAKE_VALUE,
-    STEER_COMMAND,
-    STEER_VALUE,
-    GAS_COMMAND,
-    GAS_VALUE,
-    GEAR_STATE,
-    GEAR_VALUE,
-    GAS_COMMAND_OFF = 0,
-    GAS_COMMAND_PEDAL_SPEED = 1,
-    GAS_COMMAND_POSITION = 2,
-    BRAKE_COMMAND_OFF = 0,
-    BRAKE_COMMAND_AUTO = 2,
-    STEER_COMMAND_OFF = 0,
-    STEER_COMMAND_SPEED = 1,
-    STEER_COMMAND_POSITION = 2,
-    STEER_COMMAND_VOLTAGE = 3,
-    STEER_COMMAND_LOOK_ZERO = 4,
-    GEAR_COMMAND_OFF = 0,
-    GEAR_COMMAND_NEUTRAL = 1,
-    GEAR_COMMAND_REVERSE = 2,
-    GEAR_COMMAND_DRIVE = 3,
-    JOYSTICK_MA_DATA_LENGTH = 10
+class JoystickMA
+{
+public:
+    constexpr static int ROS_TIME = 0;
+    constexpr static int TIME_VALIDITY = 1;
+    constexpr static int BRAKE_COMMAND = 2;
+    constexpr static int BRAKE_VALUE = 3;
+    constexpr static int STEER_COMMAND = 4;
+    constexpr static int STEER_VALUE = 5;
+    constexpr static int GAS_COMMAND = 6;
+    constexpr static int GAS_VALUE = 7;
+    constexpr static int GEAR_STATE = 8;
+    constexpr static int GEAR_VALUE = 9;
+    constexpr static int GAS_COMMAND_OFF = 0;
+    constexpr static int GAS_COMMAND_PEDAL_SPEED = 1;
+    constexpr static int GAS_COMMAND_POSITION = 2;
+    constexpr static int BRAKE_COMMAND_OFF = 0;
+    constexpr static int BRAKE_COMMAND_AUTO = 2;
+    constexpr static int STEER_COMMAND_OFF = 0;
+    constexpr static int STEER_COMMAND_SPEED = 1;
+    constexpr static int STEER_COMMAND_POSITION = 2;
+    constexpr static int STEER_COMMAND_VOLTAGE = 3;
+    constexpr static int STEER_COMMAND_LOOK_ZERO = 4;
+    constexpr static int GEAR_COMMAND_OFF = 0;
+    constexpr static int GEAR_COMMAND_NEUTRAL = 1;
+    constexpr static int GEAR_COMMAND_REVERSE = 2;
+    constexpr static int GEAR_COMMAND_DRIVE = 3;
+    constexpr static int JOYSTICK_MA_DATA_LENGTH = 10;
 };
 
-enum class OperationModeMA {
-    INITIAL_STATE_MODE = 1,
-    MANUAL_MODE = 2,
-    JOYSTICK_MODE = 3
+class OperationModeMA
+{
+public:
+    constexpr static int INITIAL_STATE_MODE = 1;
+    constexpr static int MANUAL_MODE = 2;
+    constexpr static int JOYSTICK_MODE = 3;
 };
 
-enum class TxTypeMA {
-    SENSORS_MA = 1000,
-    STATE_MA = 2000
+class TxTypeMA
+{
+public:
+    constexpr static int SENSORS_MA = 1000;
+    constexpr static int STATE_MA = 2000;
 };
 
-enum class RxTypeMA {
-    ONLY_RECEIVE_DATA = 0,
-    JOYSTICK_MODE_COMMAND = 30
+class RxTypeMA
+{
+public:
+    constexpr static int ONLY_RECEIVE_DATA = 0;
+    constexpr static int JOYSTICK_MODE_COMMAND = 30;
 };
 
-
-#endif  // VILMA_MA_LABELING__HPP_
+#endif // VILMA_MA_LABELING__HPP_
