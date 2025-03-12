@@ -229,7 +229,6 @@ namespace vilma
             sensors_ma_pub_->publish(sensors_ma_msg);
 
             //* Emergency -- User braking
-
             if (sensors_ma_msg.data[static_cast<int>(SensorsMA::BRAKE_USER_PRESSURE)] >= brake_user_pressure_set_emergency_)
             {
                 set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
@@ -440,7 +439,7 @@ namespace vilma
 
     /**
      *
-     * @brief Timer callback for wait some time to reconnect MA UDP communication. 
+     * @brief Timer callback for wait some time to reconnect MA UDP communication.
      * @param None
      * @return void
      */
@@ -461,9 +460,9 @@ namespace vilma
 
     /**
      *
-     * @brief 
-     * @param
-     * @return
+     * @brief Return steering normalized value [-1, 1] for a steering tire angle value;
+     * @param steering_tire_angle_rad Steering tire angle in radians
+     * @return Normalized value for the desired angle
      */
     double VilmaInterface::get_steering_value(double steering_tire_angle_rad)
     {
@@ -472,9 +471,10 @@ namespace vilma
 
     /**
      *
-     * @brief 
-     * @param
-     * @return
+     * @brief Receive the control reference for lateral and longitudinal control and process the steering, gas and brake values,
+     *        applying low-level controller to longitudinal velocity.
+     * @param msg Ackermann control topic message
+     * @return void
      */
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
@@ -515,9 +515,9 @@ namespace vilma
 
     /**
      *
-     * @brief 
-     * @param
-     * @return
+     * @brief Recieve gear command and process the request in joystick command vector.
+     * @param msg gear command received by topic.
+     * @return void
      */
     void VilmaInterface::gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg)
     {
@@ -557,20 +557,28 @@ namespace vilma
 
     /**
      *
-     * @brief 
-     * @param
-     * @return
+     * @brief Recieve engage topic, switching control mode to manual ou auto.
+     * @param msg Engage topic message.
+     * @return void
      */
     void VilmaInterface::engage_callback(const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr msg)
     {
-        set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS);
+        if (msg->engage)
+        {
+            set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS);
+        }
+        else
+        {
+            set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
+        }
     }
 
     /**
      *
-     * @brief 
-     * @param
-     * @return
+     * @brief Change control mode service server.
+     * @param request required control mode.
+     * @param response feedback of success in change control mode.
+     * @return void
      */
     void VilmaInterface::control_mode_request_callback(
         const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
@@ -581,9 +589,9 @@ namespace vilma
 
     /**
      *
-     * @brief 
-     * @param
-     * @return
+     * @brief Recieve joystick command topic and process to be sended to MA.
+     * @param msg JoystickMA message
+     * @return void
      */
     void VilmaInterface::joystick_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg)
     {
