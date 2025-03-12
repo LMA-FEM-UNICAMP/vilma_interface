@@ -103,6 +103,10 @@ namespace vilma
 
         PIDLMA velocity_controller_;
 
+        /* Command validation */
+        int autoware_command_time_validity_ms_;
+        int communication_timeout_ms_;
+
         // Methods
 
         unsigned short to_ma();
@@ -116,7 +120,7 @@ namespace vilma
 
         // Timers
 
-        rclcpp::Time last_stamp_;
+        rclcpp::Time ma_timer_last_stamp_;
         rclcpp::TimerBase::SharedPtr ma_timer_;
         rclcpp::TimerBase::SharedPtr ma_sleep_;
 

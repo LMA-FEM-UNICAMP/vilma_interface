@@ -50,7 +50,7 @@ namespace vilma
         this->declare_parameter("ma_udp_port", 5001);
         this->declare_parameter("udp_timeout_ms", 4);
         this->declare_parameter("ma_ip", "192.168.140.3");
-        this->declare_parameter("autonomous_shift_enable", 0);
+        this->declare_parameter("autonomous_shift_enable", false);
         this->declare_parameter("kp_vel", 0.0015);
         this->declare_parameter("ki_vel", 0.0);
         this->declare_parameter("kd_vel", 0.0);
@@ -60,8 +60,10 @@ namespace vilma
         this->declare_parameter("max_brake_value", 1.0);
         this->declare_parameter("max_speed_km_h", 60.0);
         this->declare_parameter("speed_reference_ramp_rate", 3.0);
-        this->declare_parameter("brake_user_pressure_emergency", 10.0);
+        this->declare_parameter("brake_user_pressure_set_emergency", 10.0);
         this->declare_parameter("joystick_command_time_validity_ms", 500);
+        this->declare_parameter("communication_timeout_ms", 1000);
+        this->declare_parameter("autoware_command_time_validity_ms", 250);
 
         /* UDP communication parameters */
         int pc_udp_port = this->get_parameter("pc_udp_port").as_int();
@@ -74,7 +76,10 @@ namespace vilma
         double ki_vel = this->get_parameter("ki_vel").as_double();
         double kd_vel = this->get_parameter("kd_vel").as_double();
 
-        /* MA's control command time validity*/
+        /* Command time validity*/
+        autoware_command_time_validity_ms_ = this->get_parameter("autoware_command_time_validity_ms").as_int();
+        communication_timeout_ms_ = this->get_parameter("communication_timeout_ms").as_int();
+        
         double joystick_command_time_validity_ms = this->get_parameter("joystick_command_time_validity_ms").as_int();
 
         /* Timers period */
@@ -144,6 +149,8 @@ namespace vilma
                                             timers_callback_group_);
 
         ma_sleep_->cancel();
+
+        ma_timer_last_stamp_ = this->get_clock()->now();
 
         /* From Autoware */
         control_cmd_sub_ = this->create_subscription<autoware_control_msgs::msg::Control>(
@@ -427,9 +434,9 @@ namespace vilma
     {
         rclcpp::Time stamp = this->get_clock()->now();
 
-        rclcpp::Duration ma_timer_dt = stamp - last_stamp_;
+        rclcpp::Duration ma_timer_dt = stamp - ma_timer_last_stamp_;
 
-        last_stamp_ = stamp;
+        ma_timer_last_stamp_ = stamp;
 
         unsigned short rx_type = to_ma();
         unsigned short tx_type = 32768;
@@ -446,6 +453,7 @@ namespace vilma
             {
                 ma_timer_->cancel();
                 ma_sleep_->reset();
+                RCLCPP_WARN(this->get_logger(), "Suspending MA communication. Waiting %d minutes to reconnect to MA...", ma_sleep_period_min_);
             }
         }
         else
@@ -469,9 +477,10 @@ namespace vilma
      */
     void VilmaInterface::ma_sleep_callback()
     {
+
         if (ma_udp_client.open_udp_socket())
         {
-            RCLCPP_INFO(this->get_logger(), "Reconnection with MA successful.");
+            RCLCPP_INFO(this->get_logger(), "Socket opened to reconnect to MA.");
         }
         else
         {
@@ -480,6 +489,8 @@ namespace vilma
 
         ma_sleep_->cancel();
         ma_timer_->reset();
+
+        RCLCPP_INFO(this->get_logger(), "MA communication reactivated.");
     }
 
     /**
@@ -539,7 +550,7 @@ namespace vilma
 
     /**
      *
-     * @brief Recieve gear command and process the request in joystick command vector.
+     * @brief Receive gear command and process the request in joystick command vector.
      * @param msg gear command received by topic.
      * @return void
      */
@@ -581,7 +592,7 @@ namespace vilma
 
     /**
      *
-     * @brief Recieve engage topic, switching control mode to manual ou auto.
+     * @brief Receive engage topic, switching control mode to manual ou auto.
      * @param msg Engage topic message.
      * @return void
      */
@@ -613,7 +624,7 @@ namespace vilma
 
     /**
      *
-     * @brief Recieve joystick command topic and process to be sended to MA.
+     * @brief Receive joystick command topic and process to be sended to MA.
      * @param msg JoystickMA message
      * @return void
      */
