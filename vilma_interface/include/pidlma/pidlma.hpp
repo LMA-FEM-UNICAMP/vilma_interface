@@ -30,15 +30,20 @@ class PIDLMA
   double error_sum_;
   double t_ant_;
   double u_;
+  double ramp_rate_;
+  double velocity_reference_in_ramp_;
 
 public:
   PIDLMA();
+  PIDLMA(double ramp_rate);
 
-  void configure(double k_p, double k_d, double k_i, double t);
+  void configure(double k_p, double k_d, double k_i, double t, double ramp_rate);
 
   void reset();
 
   double calculate(double value, double reference, double t);
+
+  void update_velocity_reference_in_ramp(double velocity_target, double dt);
 };
 
 #endif /* SRC_PIDLMA_HPP_ */

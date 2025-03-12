@@ -24,10 +24,10 @@
 
 PIDLMA::PIDLMA()
 {
-    configure(0.0, 0.0, 0.0, 0.0);
+    configure(0.0, 0.0, 0.0, 0.0, 3.0);
 }
 
-void PIDLMA::configure(double k_p, double k_d, double k_i, double t)
+void PIDLMA::configure(double k_p, double k_d, double k_i, double t, double ramp_rate)
 {
     kp_ = k_p;
     kd_ = k_d;
@@ -36,6 +36,7 @@ void PIDLMA::configure(double k_p, double k_d, double k_i, double t)
     error_sum_ = 0;
     u_ = 0;
     t_ant_ = t;
+    velocity_reference_in_ramp_ = 0;
 }
 
 void PIDLMA::reset()
@@ -46,9 +47,11 @@ void PIDLMA::reset()
 
 double PIDLMA::calculate(double value, double reference, double t)
 {
-
-    double error = reference - value;
     double dt = t - t_ant_;
+
+    update_velocity_reference_in_ramp(reference, dt);
+
+    double error = velocity_reference_in_ramp_ - value;
 
     error_sum_ += (u_ >= 1.0 || u_ <= -1.0) ? 0 : error * dt;
 
@@ -57,5 +60,28 @@ double PIDLMA::calculate(double value, double reference, double t)
     u_ = (u_ > 1.0) ? 1.0 : ((u_ < -1.0) ? -1.0 : u_);
 
     error_ant_ = error;
+
     return u_;
+}
+
+void PIDLMA::update_velocity_reference_in_ramp(double velocity_target, double dt)
+{
+    // If velocity reference is below target velocity
+    if (velocity_target > velocity_reference_in_ramp_)
+    {
+        // Increment velocity reference in ramp with a ratio of 3
+        velocity_reference_in_ramp_ += ramp_rate_ * dt;
+
+        // Saturate the value if velocity reference transpass velocity target
+        velocity_reference_in_ramp_ = (velocity_reference_in_ramp_ > velocity_target) ? velocity_target : velocity_reference_in_ramp_;
+    }
+    // If velocity reference is above target velocity
+    else if (velocity_target < velocity_reference_in_ramp_)
+    {
+        // Decrement velocity reference in ramp with a ratio of 3
+        velocity_reference_in_ramp_ -= ramp_rate_ * dt;
+
+        // Saturate the value if velocity reference transpass velocity target
+        velocity_reference_in_ramp_ = (velocity_reference_in_ramp_ < velocity_target) ? velocity_target : velocity_reference_in_ramp_;
+    }
 }

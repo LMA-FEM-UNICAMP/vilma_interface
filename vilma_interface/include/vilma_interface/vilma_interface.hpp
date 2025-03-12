@@ -56,8 +56,8 @@ namespace vilma
 
         // Attributes
 
+        std::vector<double> joystick_command_;
         std::vector<double> to_ma_vector_;
-        std::vector<double> to_ma_msg_vector;
         std::vector<double> from_ma_vector_;
         int ma_operation_mode_;
         int to_ma_length_;
@@ -65,9 +65,23 @@ namespace vilma
 
         microautobox::maudp ma_udp_client;
 
-        std::mutex mutex_to_ma_vector_;
+        std::mutex mutex_joystick_command_;
 
         uint8_t vilma_control_mode_;
+
+        rclcpp::Time last_stamp_;
+
+        /* Vehicle */
+        double brake_deadband_;
+        double max_steering_tire_angle_rad_;
+        double max_gas_value_;
+        double max_brake_value_;
+        double max_speed_m_s_;
+        double speed_reference_ramp_rate_;
+        double brake_user_pressure_set_emergency_;
+        bool change_control_mode_enabled_;
+
+        PIDLMA velocity_controller_;
 
         // Methods
 
@@ -77,12 +91,17 @@ namespace vilma
 
         bool set_control_mode(uint8_t control_mode);
 
+        double get_steering_value(double steering_tire_angle_rad);
+
         // ROS 2
 
         // Timers
 
         rclcpp::TimerBase::SharedPtr ma_timer_;
         rclcpp::TimerBase::SharedPtr ma_sleep_;
+
+        int ma_timer_period_ms_;
+        int ma_sleep_period_min_;
 
         void ma_timer_callback();
         void ma_sleep_callback();
