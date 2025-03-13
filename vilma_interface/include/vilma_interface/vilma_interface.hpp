@@ -122,7 +122,7 @@ namespace vilma
 
         rclcpp::Time ma_timer_last_stamp_;
         rclcpp::TimerBase::SharedPtr ma_timer_;
-        rclcpp::TimerBase::SharedPtr ma_sleep_;
+        rclcpp::TimerBase::SharedPtr ma_sleep_timer_;
 
         int ma_timer_period_ms_;
         int ma_sleep_period_min_;

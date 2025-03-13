@@ -79,7 +79,7 @@ namespace vilma
         /* Command time validity*/
         autoware_command_time_validity_ms_ = this->get_parameter("autoware_command_time_validity_ms").as_int();
         communication_timeout_ms_ = this->get_parameter("communication_timeout_ms").as_int();
-        
+
         double joystick_command_time_validity_ms = this->get_parameter("joystick_command_time_validity_ms").as_int();
 
         /* Timers period */
@@ -95,6 +95,8 @@ namespace vilma
         speed_reference_ramp_rate_ = this->get_parameter("speed_reference_ramp_rate").as_double();
         autonomous_shift_enable_ = this->get_parameter("autonomous_shift_enable").as_bool();
         brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
+
+        /// Initialization and configuration of attributes
 
         /* Vehicle variables initialization */
         ma_operation_mode_ = OperationModeMA::MANUAL_MODE;
@@ -120,13 +122,13 @@ namespace vilma
         state_ma_msg.data.reserve(from_ma_length_ + 1);
         state_ma_msg.data.resize(from_ma_length_ + 1, 0.0);
 
-        /* Configure UDP communication wih MA*/
+        //* Configure UDP communication wih MA
         if (!ma_udp_client.configure(pc_udp_port, ma_udp_port, ma_ip, boost::posix_time::millisec(udp_timeout_ms), to_ma_length_, from_ma_length_))
         {
             RCLCPP_ERROR(this->get_logger(), "UDP port of PC is not accessible");
         }
 
-        /* Configure velocity controller */
+        //* Configure velocity controller
         velocity_controller_.configure(kp_vel, kd_vel, ki_vel, this->get_clock()->now().seconds(), speed_reference_ramp_rate_);
 
         /// ROS2 entities
@@ -145,11 +147,13 @@ namespace vilma
         ma_timer_ = this->create_wall_timer(std::chrono::milliseconds(ma_timer_period_ms_), std::bind(&VilmaInterface::ma_timer_callback, this),
                                             timers_callback_group_);
 
-        ma_sleep_ = this->create_wall_timer(std::chrono::minutes(ma_sleep_period_min_), std::bind(&VilmaInterface::ma_sleep_callback, this),
-                                            timers_callback_group_);
+        ma_sleep_timer_ = this->create_wall_timer(std::chrono::minutes(ma_sleep_period_min_), std::bind(&VilmaInterface::ma_sleep_callback, this),
+                                                  timers_callback_group_);
 
-        ma_sleep_->cancel();
+        //* Stopping ma_sleep_timer_
+        ma_sleep_timer_->cancel();
 
+        //* Initialization of ma_timer_last_stamp_
         ma_timer_last_stamp_ = this->get_clock()->now();
 
         /* From Autoware */
@@ -213,25 +217,30 @@ namespace vilma
     {
         unsigned short rx_type;
 
-        mutex_joystick_command_.lock();
+        //* Copying joystick_command_ to to_ma_vector_ protected by mutex
+        mutex_joystick_command_.lock(); /// Lock mutex to read shared variable joystick_command_
         to_ma_vector_ = joystick_command_;
-        mutex_joystick_command_.unlock();
+        mutex_joystick_command_.unlock(); /// Unlock mutex
 
-        if (to_ma_vector_[0] == 0.0)
+        //* Checking if the to_ma_vector_ if new (stamp != 0.0)
+        if (to_ma_vector_[0] == 0.0) /// If not new, just request MA data
         {
-            rx_type = RxTypeMA::ONLY_RECEIVE_DATA;
-            to_ma_vector_[0] = ma_operation_mode_;
-            to_ma_vector_[1] = this->get_clock()->now().seconds();
-            to_ma_vector_[2] = 152;
+            rx_type = RxTypeMA::ONLY_RECEIVE_DATA; /// Configuring UDP message to only request data
 
-            std::fill(to_ma_vector_.begin() + 3, to_ma_vector_.end(), 0.0);
+            //* Overwriting to_ma_vector_ with ONLY_RECEIVE_DATA message
+            to_ma_vector_[0] = ma_operation_mode_;                          /// Setting ma_operation_mode_
+            to_ma_vector_[1] = this->get_clock()->now().seconds();          /// Setting stamp
+            to_ma_vector_[2] = 152;                                         /// ? I really don't know why this, copied from Olmer's code.
+            std::fill(to_ma_vector_.begin() + 3, to_ma_vector_.end(), 0.0); /// Filling the remaining vector with zeros.
+        }
+        else /// Else, request data and send Joystick command
+        {
+            rx_type = RxTypeMA::JOYSTICK_MODE_COMMAND; // Configuring UDP message to joystick command
+
+            ma_operation_mode_ = OperationModeMA::JOYSTICK_MODE; /// Set MA's operation mode to joystick indefinitely
         }
 
-        else
-        {
-            rx_type = RxTypeMA::JOYSTICK_MODE_COMMAND;
-        }
-
+        //* Return PC to MA (RX) UDP message type
         return rx_type;
     }
 
@@ -250,8 +259,11 @@ namespace vilma
         header_msg.stamp = stamp;
         header_msg.frame_id = std::string("base_link");
 
+        //* Verifying the type of UDP message received
         switch (type_tx)
         {
+
+        //* Vehicle sensors information
         case TxTypeMA::SENSORS_MA:
         {
             //* Publishing debug topic
@@ -259,48 +271,57 @@ namespace vilma
             std::copy(from_ma_vector_.begin(), from_ma_vector_.end(), sensors_ma_msg.data.begin() + 1);
             sensors_ma_pub_->publish(sensors_ma_msg);
 
-            //* Emergency -- User braking
-            if (sensors_ma_msg.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_)
+            //* Verify that the user brake pedal was pressed | Emergency -- User braking
             {
-                set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
-                change_control_mode_enabled_ = false;
-            }
-            else
-            {
-                change_control_mode_enabled_ = true;
-            }
+                if (sensors_ma_msg.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_)
+                {
+                    //* Change control mode to manual
+                    set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
 
-            //* Publish gear status topic
-            autoware_vehicle_msgs::msg::GearReport gear_report_msg;
-            gear_report_msg.stamp = header_msg.stamp;
-
-            switch (static_cast<int>(sensors_ma_msg.data[SensorsMA::GEAR_STATE]))
-            {
-            case SensorsMA::GEAR_OFF:
-                gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::NONE;
-                break;
-
-            case SensorsMA::GEAR_D:
-                gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::DRIVE;
-                break;
-
-            case SensorsMA::GEAR_R:
-                gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::REVERSE;
-                break;
-
-            case SensorsMA::GEAR_N:
-                gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::NEUTRAL;
-                break;
-
-            default:
-                break;
+                    //* Block control mode changing
+                    change_control_mode_enabled_ = false;
+                }
+                else
+                {
+                    //* Enable control mode changing
+                    change_control_mode_enabled_ = true;
+                }
             }
 
-            gear_report_pub_->publish(gear_report_msg);
+            //* Publish gear status topic to Autoware
+            {
+                autoware_vehicle_msgs::msg::GearReport gear_report_msg;
+                gear_report_msg.stamp = header_msg.stamp;
 
+                //* Selecting Autoware's gear option from sensors MA gear state
+                switch (static_cast<int>(sensors_ma_msg.data[SensorsMA::GEAR_STATE]))
+                {
+                case SensorsMA::GEAR_OFF:
+                    gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::NONE;
+                    break;
+
+                case SensorsMA::GEAR_D:
+                    gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::DRIVE;
+                    break;
+
+                case SensorsMA::GEAR_R:
+                    gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::REVERSE;
+                    break;
+
+                case SensorsMA::GEAR_N:
+                    gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::NEUTRAL;
+                    break;
+
+                default: // do nothing
+                    break;
+                }
+
+                gear_report_pub_->publish(gear_report_msg);
+            }
             break;
         }
 
+        //* Vehicle state information
         case TxTypeMA::STATE_MA:
         {
             //* Publish debug topic
@@ -308,29 +329,41 @@ namespace vilma
             std::copy(from_ma_vector_.begin(), from_ma_vector_.end(), state_ma_msg.data.begin() + 1);
             state_ma_pub_->publish(state_ma_msg);
 
-            //* Publish velocity status topic
-            autoware_vehicle_msgs::msg::VelocityReport velocity_report_msg;
-            velocity_report_msg.header = header_msg;
-            velocity_report_msg.heading_rate = state_ma_msg.data[StateMA::ANGULAR_YAW_SPEED];
-            velocity_report_msg.lateral_velocity = state_ma_msg.data[StateMA::LATERAL_VELOCITY];
-            velocity_report_msg.longitudinal_velocity = state_ma_msg.data[StateMA::LONGITUDINAL_SPEED];
-            velocity_report_pub_->publish(velocity_report_msg);
+            //* Publish velocity status topic to Autoware
+            {
+                autoware_vehicle_msgs::msg::VelocityReport velocity_report_msg;
 
-            //* Publish steering status topic
-            autoware_vehicle_msgs::msg::SteeringReport steering_report_msg;
-            steering_report_msg.stamp = header_msg.stamp;
-            steering_report_msg.steering_tire_angle = state_ma_msg.data[StateMA::STEER_TIRE_ANGLE];
-            steering_report_pub_->publish(steering_report_msg);
+                velocity_report_msg.header = header_msg;
+                velocity_report_msg.heading_rate = state_ma_msg.data[StateMA::ANGULAR_YAW_SPEED];
+                velocity_report_msg.lateral_velocity = state_ma_msg.data[StateMA::LATERAL_VELOCITY];
+                velocity_report_msg.longitudinal_velocity = state_ma_msg.data[StateMA::LONGITUDINAL_SPEED];
 
-            //* Publish control mode report topic
-            autoware_vehicle_msgs::msg::ControlModeReport control_mode_report_msg;
-            control_mode_report_msg.mode = vilma_control_mode_;
-            control_mode_pub_->publish(control_mode_report_msg);
+                velocity_report_pub_->publish(velocity_report_msg);
+            }
+
+            //* Publish steering status topic to Autoware
+            {
+                autoware_vehicle_msgs::msg::SteeringReport steering_report_msg;
+
+                steering_report_msg.stamp = header_msg.stamp;
+                steering_report_msg.steering_tire_angle = state_ma_msg.data[StateMA::STEER_TIRE_ANGLE];
+
+                steering_report_pub_->publish(steering_report_msg);
+            }
+
+            //* Publish control mode report topic to Autoware
+            {
+                autoware_vehicle_msgs::msg::ControlModeReport control_mode_report_msg;
+
+                control_mode_report_msg.mode = vilma_control_mode_;
+
+                control_mode_pub_->publish(control_mode_report_msg);
+            }
 
             break;
         }
 
-        default:
+        default: // do nothing
             break;
         }
     }
@@ -343,83 +376,110 @@ namespace vilma
      */
     bool VilmaInterface::set_control_mode(uint8_t control_mode)
     {
-        if (change_control_mode_enabled_)
+        //* Check if changing control mode is permitted
+        if (change_control_mode_enabled_) /// If yes
         {
-
+            //* Select the desired new control mode
             switch (control_mode)
             {
+
+            //* Manual mode
             case autoware_vehicle_msgs::msg::ControlModeReport::MANUAL:
 
-                mutex_joystick_command_.lock();
-                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+                mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                {
+                    //* Stamp to flag as a new data
+                    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_OFF;
+                    //* Set gas command in manual mode
+                    joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_OFF;
 
-                joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
+                    //* Set steer command in manual mode
+                    joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
 
-                joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_OFF;
-                mutex_joystick_command_.unlock();
+                    //* Set gear command in manual mode
+                    joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_OFF;
+                }
+                mutex_joystick_command_.unlock(); /// Unlock mutex
 
+                //* Update vehicle control mode to Autoware report
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
 
-                return true;
-
                 break;
 
+            //* Fully autonomous mode
             case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS:
 
-                mutex_joystick_command_.lock();
-                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+                mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                {
+                    //* Stamp to flag as a new data
+                    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
+                    //* Set gas command in position mode [0.0, 1.0]
+                    joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
 
-                joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
-                mutex_joystick_command_.unlock();
+                    //* Set steer command in position mode [-1.0, 1.0]
+                    joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
+                }
+                mutex_joystick_command_.unlock(); /// Unlock mutex
 
+                //* Update vehicle control mode to Autoware report
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS;
 
-                return true;
-
                 break;
 
+            //* Autonomous steering mode
             case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY:
 
-                mutex_joystick_command_.lock();
-                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+                mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                {
+                    //* Stamp to flag as a new data
+                    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_OFF;
+                    //* Set gas command in manual
+                    joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_OFF;
 
-                joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
-                mutex_joystick_command_.unlock();
+                    //* Set steer command in position mode [-1.0, 1.0]
+                    joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
+                }
+                mutex_joystick_command_.unlock(); /// Unlock mutex
 
+                //* Update vehicle control mode to Autoware report
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY;
 
-                return true;
-
                 break;
 
+            //* Autonomous velocity mode
             case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY:
 
-                mutex_joystick_command_.lock();
-                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+                mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                {
+                    //* Stamp to flag as a new data
+                    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
+                    //* Set gas command in position mode [0.0, 1.0]
+                    joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
 
-                joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
-                mutex_joystick_command_.unlock();
+                    //* Set steer command in manual mode
+                    joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
+                }
+                mutex_joystick_command_.unlock(); /// Unlock mutex
 
+                //* Update vehicle control mode to Autoware report
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY;
 
-                return true;
-
                 break;
 
-            default:
+            default: // do nothing
                 break;
             }
+
+            //* Return successful control mode changing
+            return true;
         }
-        else
+        else /// If changing control mode is blocked
         {
+            //* Return unsuccessful control mode changing
             return false;
         }
     }
@@ -432,41 +492,60 @@ namespace vilma
      */
     void VilmaInterface::ma_timer_callback()
     {
+        //* Update callback calling stamp
         rclcpp::Time stamp = this->get_clock()->now();
 
+        //* Get duration since last call
         rclcpp::Duration ma_timer_dt = stamp - ma_timer_last_stamp_;
 
+        //* Update last call stamp
         ma_timer_last_stamp_ = stamp;
 
+        //* Get UDP message PC to MA type (RX)
         unsigned short rx_type = to_ma();
+
+        //* Initialize UDP message MA to PC type (TX)
         unsigned short tx_type = 32768;
 
+        //* Send UDP request to MA
         std::string udp_request_output = ma_udp_client.ma_udp_request(&from_ma_vector_[0], &tx_type, &to_ma_vector_[0], rx_type);
 
-        if (!udp_request_output.empty())
+        //* Process request output
+        if (udp_request_output.empty()) /// Successful request (no errors reported)
         {
-            if (ma_udp_client.get_udp_error() < 12) // Print 10 first errors
-            {
-                RCLCPP_ERROR(this->get_logger(), "%s", udp_request_output.c_str());
-            }
-            else if (ma_udp_client.get_udp_error() > 1000) // Sleep UDP for some time and reconnect
-            {
-                ma_timer_->cancel();
-                ma_sleep_->reset();
-                RCLCPP_WARN(this->get_logger(), "Suspending MA communication. Waiting %d minutes to reconnect to MA...", ma_sleep_period_min_);
-            }
-        }
-        else
-        {
+            //* Process received data
             from_ma(rx_type, stamp);
 
             RCLCPP_INFO(this->get_logger(), "MA period: %f", ma_timer_dt.seconds());
         }
+        else /// Error occurred
+        {
+            //* Print some errors
+            if (ma_udp_client.get_udp_error() < 12) /// Print 10 first errors
+            {
+                RCLCPP_ERROR(this->get_logger(), "%s", udp_request_output.c_str());
+            }
 
-        // If joystick command was the sent one, the stamp is resetted to avoid send the same message again.
-        mutex_joystick_command_.lock();
-        joystick_command_[0] = (joystick_command_[0] == to_ma_vector_[0]) ? 0.0 : joystick_command_[0];
-        mutex_joystick_command_.unlock();
+            //* If were so much errors, wait some time to reconnect
+            else if (ma_udp_client.get_udp_error() > 1000) /// Sleep UDP for some time and reconnect
+            {
+                //* Stop ma_timer_
+                ma_timer_->cancel();
+
+                //* Start ma_sleep_timer_
+                ma_sleep_timer_->reset();
+
+                RCLCPP_WARN(this->get_logger(), "Suspending MA communication. Waiting %d minutes to reconnect to MA...", ma_sleep_period_min_);
+            }
+        }
+
+        //* Clear stamp to flag the message as sent
+        mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+        {
+            // If joystick command was the sent one, the stamp is resetted to avoid send the same message again.
+            joystick_command_[0] = (joystick_command_[0] == to_ma_vector_[0]) ? 0.0 : joystick_command_[0];
+        }
+        mutex_joystick_command_.unlock(); /// Unlock mutex
     }
 
     /**
@@ -477,7 +556,9 @@ namespace vilma
      */
     void VilmaInterface::ma_sleep_callback()
     {
+        /// This callback was called some time after ma_timer_ was disabled
 
+        //* Try to open UDP socket
         if (ma_udp_client.open_udp_socket())
         {
             RCLCPP_INFO(this->get_logger(), "Socket opened to reconnect to MA.");
@@ -487,7 +568,10 @@ namespace vilma
             RCLCPP_ERROR(this->get_logger(), "Error to open socket.");
         }
 
-        ma_sleep_->cancel();
+        //* Disable ma_sleep_timer_
+        ma_sleep_timer_->cancel();
+
+        //* Enable ma_timer_ to reconnect to MA through UDP
         ma_timer_->reset();
 
         RCLCPP_INFO(this->get_logger(), "MA communication reactivated.");
@@ -501,6 +585,7 @@ namespace vilma
      */
     double VilmaInterface::get_steering_value(double steering_tire_angle_rad)
     {
+        //* Get normalized steering value
         return steering_tire_angle_rad / max_steering_tire_angle_rad_;
     }
 
@@ -513,39 +598,51 @@ namespace vilma
      */
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
+        //* Creating gas and brake value variables
         double gas_value = 0.0;
         double brake_value = 0.0;
+
+        //* Creating brake command variable initialized in manual braking
+        /// By-Wire Braking is only enabled when autonomous braking is needed
         double brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
 
+        //* Computing control action from current speed and speed reference
         double control_action = velocity_controller_.calculate(state_ma_msg.data[StateMA::LONGITUDINAL_SPEED],
                                                                msg->longitudinal.velocity, this->get_clock()->now().seconds());
 
-        // Negative control action above engine brake limit
-        if (control_action <= brake_deadband_)
+        //* Checking control action value to assign as braking, accelerating or engine braking
+        if (control_action <= brake_deadband_) /// Active braking
         {
-            // Assign the control action as braking percentage
+            //* Assign the control action as braking percentage mapped from [-1.0, -0.1] to [0.0, 1.0]
             brake_value = (-control_action + brake_deadband_) / (1.0 - brake_deadband_);
 
-            // Setting brake mode in autonomous
+            //* Setting brake mode in autonomous
             brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
         }
-        // Positive control action
-        else if (control_action >= 0)
+        else if (control_action >= 0) /// Accelerating
         {
-            // Assign control action as gas pedal position
+            //* Assign control action as gas pedal position [0.0, 1.0]
             gas_value = control_action;
         }
+        /// Else: engine braking
 
-        mutex_joystick_command_.lock();
-        joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+        //* Assign steer value received in msg, gas value and brake data in joystick command
+        mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+        {
+            //* Stamp to flag as a new data
+            joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-        joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(msg->lateral.steering_tire_angle);
+            //* Assign steering angle received from Autoware normalized by get_steering_value
+            joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(msg->lateral.steering_tire_angle);
 
-        joystick_command_[JoystickMA::GAS_VALUE] = get_steering_value(msg->lateral.steering_tire_angle);
+            //* Assign gas value
+            joystick_command_[JoystickMA::GAS_VALUE] = gas_value;
 
-        joystick_command_[JoystickMA::BRAKE_COMMAND] = brake_command;
-        joystick_command_[JoystickMA::BRAKE_VALUE] = brake_value;
-        mutex_joystick_command_.unlock();
+            //* Assign brake command and value
+            joystick_command_[JoystickMA::BRAKE_COMMAND] = brake_command;
+            joystick_command_[JoystickMA::BRAKE_VALUE] = brake_value;
+        }
+        mutex_joystick_command_.unlock(); /// Unlock mutex
     }
 
     /**
@@ -556,35 +653,55 @@ namespace vilma
      */
     void VilmaInterface::gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg)
     {
-        if (autonomous_shift_enable_)
+        //* Check if autonomous shift is enabled
+        if (autonomous_shift_enable_) // It is
         {
+            //* Select new gear from Autoware command
             switch (msg->command)
             {
             case autoware_vehicle_msgs::msg::GearCommand::NEUTRAL:
-                mutex_joystick_command_.lock();
-                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_NEUTRAL;
-                mutex_joystick_command_.unlock();
+                mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                {
+                    //* Stamp to flag as a new data
+                    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+
+                    //* Assign gear state to neutral
+                    joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_NEUTRAL;
+                }
+                mutex_joystick_command_.unlock(); /// Unlock mutex
+
                 break;
 
             case autoware_vehicle_msgs::msg::GearCommand::REVERSE:
-                mutex_joystick_command_.lock();
-                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_REVERSE;
-                mutex_joystick_command_.unlock();
+                mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                {
+                    //* Stamp to flag as a new data
+                    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+
+                    //* Assign gear state to reverse
+                    joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_REVERSE;
+                }
+                mutex_joystick_command_.unlock(); /// Unlock mutex
+
                 break;
 
             case autoware_vehicle_msgs::msg::GearCommand::DRIVE:
-                mutex_joystick_command_.lock();
-                joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_DRIVE;
-                mutex_joystick_command_.unlock();
+                mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                {
+                    //* Stamp to flag as a new data
+                    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+
+                    //* Assign gear state to drive
+                    joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_DRIVE;
+                }
+                mutex_joystick_command_.unlock(); /// Unlock mutex
+
                 break;
 
-            default:
+            default: // do nothing
                 break;
             }
         }
@@ -598,12 +715,15 @@ namespace vilma
      */
     void VilmaInterface::engage_callback(const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr msg)
     {
-        if (msg->engage)
+        //* Select control mode from engage message (engage or not engage)
+        if (msg->engage) /// Engage Autoware (fully autonomous mode)
         {
+            //* Request change control mode to AUTONOMOUS
             set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS);
         }
-        else
+        else /// Disengage Autoware (fully autonomous mode)
         {
+            //* Request change control mode to MANUAL
             set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
         }
     }
@@ -619,6 +739,8 @@ namespace vilma
         const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
         const autoware_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response)
     {
+        //* Request change control mode to Autoware mode requested and assign
+        //* the response status to service request answer
         response->success = set_control_mode(request->mode);
     }
 
@@ -630,9 +752,12 @@ namespace vilma
      */
     void VilmaInterface::joystick_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg)
     {
-        mutex_joystick_command_.lock();
-        joystick_command_ = msg->data;
-        mutex_joystick_command_.unlock();
+        mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+        {
+            //* Assign joystick message received by debug topic to joystick command vector
+            joystick_command_ = msg->data;
+        }
+        mutex_joystick_command_.unlock(); /// Unlock mutex
     }
 
 } // namespace vilma

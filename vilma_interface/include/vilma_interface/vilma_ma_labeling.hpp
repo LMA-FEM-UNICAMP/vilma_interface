@@ -26,6 +26,7 @@
  #ifndef VILMA_MA_LABELING__HPP_
 #define VILMA_MA_LABELING__HPP_
 
+//* Sensors UDP message from MA definitions
 class SensorsMA
 {
 public:
@@ -65,6 +66,7 @@ public:
     constexpr static int GEAR_D = 3;
 };
 
+//* State UDP message from MA definitions
 class StateMA
 {
 public:
@@ -85,6 +87,7 @@ public:
     constexpr static int YAW_DC_ERROR = 14;
 };
 
+//* Joystick UDP message to MA definitions
 class JoystickMA
 {
 public:
@@ -115,6 +118,7 @@ public:
     constexpr static int JOYSTICK_MA_DATA_LENGTH = 10;
 };
 
+//* MA's operation modes definitions
 class OperationModeMA
 {
 public:
@@ -123,6 +127,7 @@ public:
     constexpr static int JOYSTICK_MODE = 3;
 };
 
+//* MA to PC UDP message types definitions
 class TxTypeMA
 {
 public:
@@ -130,6 +135,7 @@ public:
     constexpr static int STATE_MA = 2000;
 };
 
+//* PC to MA UDP message types definitions
 class RxTypeMA
 {
 public:
