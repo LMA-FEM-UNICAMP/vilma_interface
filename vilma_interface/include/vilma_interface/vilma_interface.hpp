@@ -26,7 +26,7 @@
 #ifndef vilma_interface__HPP_
 #define vilma_interface__HPP_
 
-// std includes
+// C++ includes
 
 #include <algorithm>
 #include <functional>
@@ -60,10 +60,6 @@
 #include "pidlma/pidlma.hpp"
 #include "maudp/maudp.h"
 
-// UDP libraries
-
-#include <boost/date_time/posix_time/posix_time_types.hpp>
-
 namespace vilma
 {
     class VilmaInterface : public rclcpp::Node
@@ -74,7 +70,6 @@ namespace vilma
         ~VilmaInterface();
 
     private:
-
         // Parameters
 
         // Attributes
@@ -116,7 +111,7 @@ namespace vilma
 
         double get_steering_value(double steering_tire_angle_rad);
 
-        // ROS 2
+        /// ROS 2
 
         // Timers
 
@@ -162,8 +157,6 @@ namespace vilma
         void control_mode_request_callback(const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
                                            const autoware_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response);
 
-        /* Messages */
-
         // VILMA
 
         /* Subscribers */
@@ -176,6 +169,7 @@ namespace vilma
         rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr sensors_ma_pub_;
 
         /* Messages */
+
         std_msgs::msg::Float64MultiArray state_ma_msg;
         std_msgs::msg::Float64MultiArray sensors_ma_msg;
 

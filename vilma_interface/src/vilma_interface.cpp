@@ -37,13 +37,12 @@ namespace vilma
     VilmaInterface::VilmaInterface() : Node("vilma_interface")
     {
         /// Placeholders
-
         using std::placeholders::_1;
         using std::placeholders::_2;
 
         /// Parameters
 
-        /* ROS2 parameters declaration*/
+        /* ROS2 parameters declaration */
         this->declare_parameter("ma_timer_period_ms", 10);
         this->declare_parameter("ma_sleep_period_min", 2);
         this->declare_parameter("pc_udp_port", 5001);
@@ -175,8 +174,8 @@ namespace vilma
         control_mode_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::ControlModeReport>(
             "/vehicle/status/control_mode", rclcpp::QoS{1});
 
-        gear_report_pub_ =
-            this->create_publisher<autoware_vehicle_msgs::msg::GearReport>("/vehicle/status/gear_status", rclcpp::QoS{1});
+        gear_report_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::GearReport>(
+            "/vehicle/status/gear_status", rclcpp::QoS{1});
 
         steering_report_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::SteeringReport>(
             "/vehicle/status/steering_status", rclcpp::QoS{1});
@@ -186,13 +185,14 @@ namespace vilma
 
         /* Debug topics */
         joystick_ma_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
-            "/vilma_ma_debug/joystick_ma", rclcpp::QoS{1}, std::bind(&VilmaInterface::joystick_ma_callback, this, _1), debug_sub_options);
+            "/vilma_ma_debug/joystick_ma", rclcpp::QoS{1}, std::bind(&VilmaInterface::joystick_ma_callback, this, _1),
+            debug_sub_options);
 
-        state_ma_pub_ =
-            this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/state_ma", rclcpp::QoS{1});
+        state_ma_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
+            "/vilma_ma_debug/state_ma", rclcpp::QoS{1});
 
-        sensors_ma_pub_ =
-            this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/sensors_ma", rclcpp::QoS{1});
+        sensors_ma_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
+            "/vilma_ma_debug/sensors_ma", rclcpp::QoS{1});
     }
 
     /**
