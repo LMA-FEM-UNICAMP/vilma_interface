@@ -122,13 +122,18 @@ namespace vilma
         state_ma_msg.data.resize(from_ma_length_ + 1, 0.0);
 
         //* Configure UDP communication wih MA
-        if (!ma_udp_client.configure(pc_udp_port, ma_udp_port, ma_ip, boost::posix_time::millisec(udp_timeout_ms), to_ma_length_, from_ma_length_))
+        bool udp_configure_response = ma_udp_client.configure(pc_udp_port, ma_udp_port, ma_ip,
+                                                              boost::posix_time::millisec(udp_timeout_ms),
+                                                              to_ma_length_, from_ma_length_);
+
+        if (!udp_configure_response)
         {
             RCLCPP_ERROR(this->get_logger(), "UDP port of PC is not accessible");
         }
 
         //* Configure velocity controller
-        velocity_controller_.configure(kp_vel, kd_vel, ki_vel, this->get_clock()->now().seconds(), speed_reference_ramp_rate_);
+        velocity_controller_.configure(kp_vel, kd_vel, ki_vel, this->get_clock()->now().seconds(),
+                                       speed_reference_ramp_rate_);
 
         /// ROS2 entities
 
@@ -143,10 +148,12 @@ namespace vilma
 
         debug_sub_options.callback_group = subscribers_callback_group;
 
-        ma_timer_ = this->create_wall_timer(std::chrono::milliseconds(ma_timer_period_ms_), std::bind(&VilmaInterface::ma_timer_callback, this),
+        ma_timer_ = this->create_wall_timer(std::chrono::milliseconds(ma_timer_period_ms_),
+                                            std::bind(&VilmaInterface::ma_timer_callback, this),
                                             timers_callback_group_);
 
-        ma_sleep_timer_ = this->create_wall_timer(std::chrono::minutes(ma_sleep_period_min_), std::bind(&VilmaInterface::ma_sleep_callback, this),
+        ma_sleep_timer_ = this->create_wall_timer(std::chrono::minutes(ma_sleep_period_min_),
+                                                  std::bind(&VilmaInterface::ma_sleep_callback, this),
                                                   timers_callback_group_);
 
         //* Stopping ma_sleep_timer_
@@ -157,18 +164,23 @@ namespace vilma
 
         /* From Autoware */
         control_cmd_sub_ = this->create_subscription<autoware_control_msgs::msg::Control>(
-            "/control/command/control_cmd", rclcpp::QoS{1}, std::bind(&VilmaInterface::control_cmd_callback, this, _1),
+            "/control/command/control_cmd", rclcpp::QoS{1},
+            std::bind(&VilmaInterface::control_cmd_callback, this, _1),
             autoware_sub_options);
 
         gear_cmd_sub_ = this->create_subscription<autoware_vehicle_msgs::msg::GearCommand>(
-            "/control/command/gear_cmd", rclcpp::QoS{1}, std::bind(&VilmaInterface::gear_cmd_callback, this, _1),
+            "/control/command/gear_cmd", rclcpp::QoS{1},
+            std::bind(&VilmaInterface::gear_cmd_callback, this, _1),
             autoware_sub_options);
 
         engage_sub_ = this->create_subscription<autoware_vehicle_msgs::msg::Engage>(
-            "/vehicle/engage", rclcpp::QoS{1}, std::bind(&VilmaInterface::engage_callback, this, _1), autoware_sub_options);
+            "/vehicle/engage", rclcpp::QoS{1},
+            std::bind(&VilmaInterface::engage_callback, this, _1),
+            autoware_sub_options);
 
         control_mode_request_server_ = this->create_service<autoware_vehicle_msgs::srv::ControlModeCommand>(
-            "/control/control_mode_request", std::bind(&VilmaInterface::control_mode_request_callback, this, _1, _2));
+            "/control/control_mode_request",
+            std::bind(&VilmaInterface::control_mode_request_callback, this, _1, _2));
 
         /* To Autoware */
         control_mode_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::ControlModeReport>(
@@ -185,7 +197,8 @@ namespace vilma
 
         /* Debug topics */
         joystick_ma_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
-            "/vilma_ma_debug/joystick_ma", rclcpp::QoS{1}, std::bind(&VilmaInterface::joystick_ma_callback, this, _1),
+            "/vilma_ma_debug/joystick_ma", rclcpp::QoS{1},
+            std::bind(&VilmaInterface::joystick_ma_callback, this, _1),
             debug_sub_options);
 
         state_ma_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
@@ -253,7 +266,6 @@ namespace vilma
      */
     void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
     {
-
         //* Assembling header for messages
         std_msgs::msg::Header header_msg;
         header_msg.stamp = stamp;
@@ -262,7 +274,6 @@ namespace vilma
         //* Verifying the type of UDP message received
         switch (type_tx)
         {
-
         //* Vehicle sensors information
         case TxTypeMA::SENSORS_MA:
         {
@@ -382,7 +393,6 @@ namespace vilma
             //* Select the desired new control mode
             switch (control_mode)
             {
-
             //* Manual mode
             case autoware_vehicle_msgs::msg::ControlModeReport::MANUAL:
 
@@ -508,7 +518,8 @@ namespace vilma
         unsigned short tx_type = 32768;
 
         //* Send UDP request to MA
-        std::string udp_request_output = ma_udp_client.ma_udp_request(&from_ma_vector_[0], &tx_type, &to_ma_vector_[0], rx_type);
+        std::string udp_request_output =
+            ma_udp_client.ma_udp_request(&from_ma_vector_[0], &tx_type, &to_ma_vector_[0], rx_type);
 
         //* Process request output
         if (udp_request_output.empty()) /// Successful request (no errors reported)
@@ -535,7 +546,10 @@ namespace vilma
                 //* Start ma_sleep_timer_
                 ma_sleep_timer_->reset();
 
-                RCLCPP_WARN(this->get_logger(), "Suspending MA communication. Waiting %d minutes to reconnect to MA...", ma_sleep_period_min_);
+                RCLCPP_WARN(
+                    this->get_logger(),
+                    "Suspending MA communication. Waiting %d minutes to reconnect to MA...",
+                    ma_sleep_period_min_);
             }
         }
 
@@ -591,8 +605,8 @@ namespace vilma
 
     /**
      *
-     * @brief Receive the control reference for lateral and longitudinal control and process the steering, gas and brake values,
-     *        applying low-level controller to longitudinal velocity.
+     * @brief Receive the control reference for lateral and longitudinal control and process the steering, gas and brake
+     * values, applying low-level controller to longitudinal velocity.
      * @param msg Ackermann control topic message
      * @return void
      */
@@ -607,8 +621,8 @@ namespace vilma
         double brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
 
         //* Computing control action from current speed and speed reference
-        double control_action = velocity_controller_.calculate(state_ma_msg.data[StateMA::LONGITUDINAL_SPEED],
-                                                               msg->longitudinal.velocity, this->get_clock()->now().seconds());
+        double control_action = velocity_controller_.calculate(
+            state_ma_msg.data[StateMA::LONGITUDINAL_SPEED], msg->longitudinal.velocity, this->get_clock()->now().seconds());
 
         //* Checking control action value to assign as braking, accelerating or engine braking
         if (control_action <= brake_deadband_) /// Active braking

@@ -146,6 +146,8 @@ namespace vilma
 
         /* Callback groups */
 
+        /// Using callback groups to parallel execution of node timers and subscriber callbacks
+
         rclcpp::CallbackGroup::SharedPtr timers_callback_group_;
         rclcpp::CallbackGroup::SharedPtr subscribers_callback_group;
 

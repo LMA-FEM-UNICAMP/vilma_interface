@@ -34,7 +34,10 @@ int main(int argc, char **argv)
 
     auto vilma_interface_node = std::make_shared<vilma::VilmaInterface>();
 
+    //* Creating multi-threaded executor
     rclcpp::executors::MultiThreadedExecutor mt_executor;
+
+    //* Adding node to executor
     mt_executor.add_node(vilma_interface_node);
 
     RCLCPP_INFO(vilma_interface_node->get_logger(), "Starting VILMA's vehicle interface through UDP");
