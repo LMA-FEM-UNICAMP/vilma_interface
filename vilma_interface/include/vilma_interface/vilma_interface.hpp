@@ -149,7 +149,7 @@ namespace vilma
         /// Using callback groups to parallel execution of node timers and subscriber callbacks
 
         rclcpp::CallbackGroup::SharedPtr timers_callback_group_;
-        rclcpp::CallbackGroup::SharedPtr subscribers_callback_group;
+        rclcpp::CallbackGroup::SharedPtr subscribers_callback_group_;
 
         /* Callbacks */
 
@@ -172,8 +172,8 @@ namespace vilma
 
         /* Messages */
 
-        std_msgs::msg::Float64MultiArray state_ma_msg;
-        std_msgs::msg::Float64MultiArray sensors_ma_msg;
+        std_msgs::msg::Float64MultiArray state_ma_msg_;
+        std_msgs::msg::Float64MultiArray sensors_ma_msg_;
 
         /* Callbacks */
 

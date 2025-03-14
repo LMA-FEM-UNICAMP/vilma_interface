@@ -116,10 +116,10 @@ namespace vilma
         from_ma_vector_.reserve(from_ma_length_);
         from_ma_vector_.resize(from_ma_length_, 0.0);
 
-        sensors_ma_msg.data.reserve(from_ma_length_ + 1);
-        sensors_ma_msg.data.resize(from_ma_length_ + 1, 0.0);
-        state_ma_msg.data.reserve(from_ma_length_ + 1);
-        state_ma_msg.data.resize(from_ma_length_ + 1, 0.0);
+        sensors_ma_msg_.data.reserve(from_ma_length_ + 1);
+        sensors_ma_msg_.data.resize(from_ma_length_ + 1, 0.0);
+        state_ma_msg_.data.reserve(from_ma_length_ + 1);
+        state_ma_msg_.data.resize(from_ma_length_ + 1, 0.0);
 
         //* Configure UDP communication wih MA
         bool udp_configure_response = ma_udp_client.configure(pc_udp_port, ma_udp_port, ma_ip,
@@ -142,11 +142,11 @@ namespace vilma
 
         timers_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
-        subscribers_callback_group = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+        subscribers_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
-        autoware_sub_options.callback_group = subscribers_callback_group;
+        autoware_sub_options.callback_group = subscribers_callback_group_;
 
-        debug_sub_options.callback_group = subscribers_callback_group;
+        debug_sub_options.callback_group = subscribers_callback_group_;
 
         ma_timer_ = this->create_wall_timer(std::chrono::milliseconds(ma_timer_period_ms_),
                                             std::bind(&VilmaInterface::ma_timer_callback, this),
@@ -278,13 +278,13 @@ namespace vilma
         case TxTypeMA::SENSORS_MA:
         {
             //* Publishing debug topic
-            sensors_ma_msg.data[0] = stamp.seconds();
-            std::copy(from_ma_vector_.begin(), from_ma_vector_.end(), sensors_ma_msg.data.begin() + 1);
-            sensors_ma_pub_->publish(sensors_ma_msg);
+            sensors_ma_msg_.data[0] = stamp.seconds();
+            std::copy(from_ma_vector_.begin(), from_ma_vector_.end(), sensors_ma_msg_.data.begin() + 1);
+            sensors_ma_pub_->publish(sensors_ma_msg_);
 
             //* Verify that the user brake pedal was pressed | Emergency -- User braking
             {
-                if (sensors_ma_msg.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_)
+                if (sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_)
                 {
                     //* Change control mode to manual
                     set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
@@ -305,7 +305,7 @@ namespace vilma
                 gear_report_msg.stamp = header_msg.stamp;
 
                 //* Selecting Autoware's gear option from sensors MA gear state
-                switch (static_cast<int>(sensors_ma_msg.data[SensorsMA::GEAR_STATE]))
+                switch (static_cast<int>(sensors_ma_msg_.data[SensorsMA::GEAR_STATE]))
                 {
                 case SensorsMA::GEAR_OFF:
                     gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::NONE;
@@ -336,18 +336,18 @@ namespace vilma
         case TxTypeMA::STATE_MA:
         {
             //* Publish debug topic
-            state_ma_msg.data[0] = stamp.seconds();
-            std::copy(from_ma_vector_.begin(), from_ma_vector_.end(), state_ma_msg.data.begin() + 1);
-            state_ma_pub_->publish(state_ma_msg);
+            state_ma_msg_.data[0] = stamp.seconds();
+            std::copy(from_ma_vector_.begin(), from_ma_vector_.end(), state_ma_msg_.data.begin() + 1);
+            state_ma_pub_->publish(state_ma_msg_);
 
             //* Publish velocity status topic to Autoware
             {
                 autoware_vehicle_msgs::msg::VelocityReport velocity_report_msg;
 
                 velocity_report_msg.header = header_msg;
-                velocity_report_msg.heading_rate = state_ma_msg.data[StateMA::ANGULAR_YAW_SPEED];
-                velocity_report_msg.lateral_velocity = state_ma_msg.data[StateMA::LATERAL_VELOCITY];
-                velocity_report_msg.longitudinal_velocity = state_ma_msg.data[StateMA::LONGITUDINAL_SPEED];
+                velocity_report_msg.heading_rate = state_ma_msg_.data[StateMA::ANGULAR_YAW_SPEED];
+                velocity_report_msg.lateral_velocity = state_ma_msg_.data[StateMA::LATERAL_VELOCITY];
+                velocity_report_msg.longitudinal_velocity = state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED];
 
                 velocity_report_pub_->publish(velocity_report_msg);
             }
@@ -357,7 +357,7 @@ namespace vilma
                 autoware_vehicle_msgs::msg::SteeringReport steering_report_msg;
 
                 steering_report_msg.stamp = header_msg.stamp;
-                steering_report_msg.steering_tire_angle = state_ma_msg.data[StateMA::STEER_TIRE_ANGLE];
+                steering_report_msg.steering_tire_angle = state_ma_msg_.data[StateMA::STEER_TIRE_ANGLE];
 
                 steering_report_pub_->publish(steering_report_msg);
             }
@@ -427,9 +427,13 @@ namespace vilma
 
                     //* Set gas command in position mode [0.0, 1.0]
                     joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
+                    //* Avoid send old gas value
+                    joystick_command_[JoystickMA::GAS_VALUE] = 0.0;
 
                     //* Set steer command in position mode [-1.0, 1.0]
                     joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
+                    //* Avoid send old steer value
+                    joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
                 }
                 mutex_joystick_command_.unlock(); /// Unlock mutex
 
@@ -451,6 +455,8 @@ namespace vilma
 
                     //* Set steer command in position mode [-1.0, 1.0]
                     joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
+                    //* Avoid send old steer value
+                    joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
                 }
                 mutex_joystick_command_.unlock(); /// Unlock mutex
 
@@ -469,6 +475,8 @@ namespace vilma
 
                     //* Set gas command in position mode [0.0, 1.0]
                     joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
+                    //* Avoid send old gas value
+                    joystick_command_[JoystickMA::GAS_VALUE] = 0.0;
 
                     //* Set steer command in manual mode
                     joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
@@ -612,6 +620,7 @@ namespace vilma
      */
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
+
         //* Creating gas and brake value variables
         double gas_value = 0.0;
         double brake_value = 0.0;
@@ -620,25 +629,28 @@ namespace vilma
         /// By-Wire Braking is only enabled when autonomous braking is needed
         double brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
 
-        //* Computing control action from current speed and speed reference
-        double control_action = velocity_controller_.calculate(
-            state_ma_msg.data[StateMA::LONGITUDINAL_SPEED], msg->longitudinal.velocity, this->get_clock()->now().seconds());
-
-        //* Checking control action value to assign as braking, accelerating or engine braking
-        if (control_action <= brake_deadband_) /// Active braking
+        if (joystick_command_[JoystickMA::GAS_COMMAND] == JoystickMA::GAS_COMMAND_POSITION)
         {
-            //* Assign the control action as braking percentage mapped from [-1.0, -0.1] to [0.0, 1.0]
-            brake_value = (-control_action + brake_deadband_) / (1.0 - brake_deadband_);
+            //* Computing control action from current speed and speed reference
+            double control_action = velocity_controller_.calculate(
+                state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED], msg->longitudinal.velocity, this->get_clock()->now().seconds());
 
-            //* Setting brake mode in autonomous
-            brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
+            //* Checking control action value to assign as braking, accelerating or engine braking
+            if (control_action <= brake_deadband_) /// Active braking
+            {
+                //* Assign the control action as braking percentage mapped from [-1.0, -0.1] to [0.0, 1.0]
+                brake_value = (-control_action + brake_deadband_) / (1.0 - brake_deadband_);
+
+                //* Setting brake mode in autonomous
+                brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
+            }
+            else if (control_action >= 0) /// Accelerating
+            {
+                //* Assign control action as gas pedal position [0.0, 1.0]
+                gas_value = control_action;
+            }
+            /// Else: engine braking
         }
-        else if (control_action >= 0) /// Accelerating
-        {
-            //* Assign control action as gas pedal position [0.0, 1.0]
-            gas_value = control_action;
-        }
-        /// Else: engine braking
 
         //* Assign steer value received in msg, gas value and brake data in joystick command
         mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
