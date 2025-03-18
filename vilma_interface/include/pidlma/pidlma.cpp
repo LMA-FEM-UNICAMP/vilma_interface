@@ -24,10 +24,10 @@
 
 PIDLMA::PIDLMA()
 {
-    configure(0.0, 0.0, 0.0, 0.0, 3.0);
+    configure(0.0, 0.0, 0.0, 0.0, 3.0, -0.1);
 }
 
-void PIDLMA::configure(double k_p, double k_d, double k_i, double t, double ramp_rate)
+void PIDLMA::configure(double k_p, double k_d, double k_i, double t, double ramp_rate, double brake_deadband_)
 {
     kp_ = k_p;
     kd_ = k_d;
@@ -45,7 +45,7 @@ void PIDLMA::reset()
     error_sum_ = 0;
 }
 
-double PIDLMA::calculate(double value, double reference, double t)
+void PIDLMA::calculate(ActuationCommand &control_action, double value, double reference, double t)
 {
     double dt = t - t_ant_;
 
@@ -61,7 +61,21 @@ double PIDLMA::calculate(double value, double reference, double t)
 
     error_ant_ = error;
 
-    return u_;
+    //* Checking control action value to assign as braking, accelerating or engine braking
+    if (u_ <= brake_deadband_) /// Active braking
+    {
+        //* Assign the control action as braking percentage mapped from [-1.0, -0.1] to [0.0, 1.0]
+        control_action.brake_value = (-u_ + brake_deadband_) / (1.0 - brake_deadband_);
+
+        //* Setting brake mode in autonomous
+        control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
+    }
+    else if (u_ >= 0) /// Accelerating
+    {
+        //* Assign control action as gas pedal position [0.0, 1.0]
+        control_action.gas_value = u_;
+    }            
+    /// Else: engine braking
 }
 
 void PIDLMA::update_velocity_reference_in_ramp(double velocity_target, double dt)

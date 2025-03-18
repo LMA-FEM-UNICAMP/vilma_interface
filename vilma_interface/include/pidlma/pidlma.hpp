@@ -23,6 +23,16 @@
 #ifndef SRC_PIDLMA_HPP_
 #define SRC_PIDLMA_HPP_
 
+
+#include "vilma_interface/vilma_ma_labeling.hpp"
+
+struct ActuationCommand
+{
+  double brake_command = 0.0;
+  double brake_value = 0.0;
+  double gas_value = 0.0;
+};
+
 class PIDLMA
 {
   double kp_, kd_, ki_;
@@ -32,16 +42,17 @@ class PIDLMA
   double u_;
   double ramp_rate_;
   double velocity_reference_in_ramp_;
+  double brake_deadband_;
 
 public:
   PIDLMA();
   PIDLMA(double ramp_rate);
 
-  void configure(double k_p, double k_d, double k_i, double t, double ramp_rate);
+  void configure(double k_p, double k_d, double k_i, double t, double ramp_rate, double brake_deadband_);
 
   void reset();
 
-  double calculate(double value, double reference, double t);
+  void calculate(ActuationCommand &control_action, double value, double reference, double t);
 
   void update_velocity_reference_in_ramp(double velocity_target, double dt);
 };

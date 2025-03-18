@@ -133,7 +133,7 @@ namespace vilma
 
         //* Configure velocity controller
         velocity_controller_.configure(kp_vel, kd_vel, ki_vel, this->get_clock()->now().seconds(),
-                                       speed_reference_ramp_rate_);
+                                       speed_reference_ramp_rate_, brake_deadband_);
 
         /// ROS2 entities
 
@@ -622,34 +622,17 @@ namespace vilma
     {
 
         //* Creating gas and brake value variables
-        double gas_value = 0.0;
-        double brake_value = 0.0;
+        ActuationCommand control_action;
 
         //* Creating brake command variable initialized in manual braking
         /// By-Wire Braking is only enabled when autonomous braking is needed
-        double brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
+        control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
 
         if (joystick_command_[JoystickMA::GAS_COMMAND] == JoystickMA::GAS_COMMAND_POSITION)
         {
             //* Computing control action from current speed and speed reference
-            double control_action = velocity_controller_.calculate(
-                state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED], msg->longitudinal.velocity, this->get_clock()->now().seconds());
-
-            //* Checking control action value to assign as braking, accelerating or engine braking
-            if (control_action <= brake_deadband_) /// Active braking
-            {
-                //* Assign the control action as braking percentage mapped from [-1.0, -0.1] to [0.0, 1.0]
-                brake_value = (-control_action + brake_deadband_) / (1.0 - brake_deadband_);
-
-                //* Setting brake mode in autonomous
-                brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
-            }
-            else if (control_action >= 0) /// Accelerating
-            {
-                //* Assign control action as gas pedal position [0.0, 1.0]
-                gas_value = control_action;
-            }
-            /// Else: engine braking
+            velocity_controller_.calculate(control_action, state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED],
+                                           msg->longitudinal.velocity, this->get_clock()->now().seconds());
         }
 
         //* Assign steer value received in msg, gas value and brake data in joystick command
@@ -662,11 +645,11 @@ namespace vilma
             joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(msg->lateral.steering_tire_angle);
 
             //* Assign gas value
-            joystick_command_[JoystickMA::GAS_VALUE] = gas_value;
+            joystick_command_[JoystickMA::GAS_VALUE] = control_action.gas_value;
 
             //* Assign brake command and value
-            joystick_command_[JoystickMA::BRAKE_COMMAND] = brake_command;
-            joystick_command_[JoystickMA::BRAKE_VALUE] = brake_value;
+            joystick_command_[JoystickMA::BRAKE_COMMAND] = control_action.brake_command;
+            joystick_command_[JoystickMA::BRAKE_VALUE] = control_action.brake_value;
         }
         mutex_joystick_command_.unlock(); /// Unlock mutex
     }

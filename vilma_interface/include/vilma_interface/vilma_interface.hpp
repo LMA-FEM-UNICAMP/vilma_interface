@@ -70,8 +70,6 @@ namespace vilma
         ~VilmaInterface();
 
     private:
-        // Parameters
-
         // Attributes
 
         microautobox::maudp ma_udp_client;
