@@ -1124,7 +1124,7 @@
             <mxPoint x="-15" y="-8" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="9GjPR25ph32ckkB3pJjk-114" value="$$B$$" style="whiteSpace=wrap;html=1;fontSize=14;fontFamily=Lucida Console;fillColor=#ffe6cc;labelBackgroundColor=none;strokeWidth=2;strokeColor=#d79b00;" vertex="1" parent="1">
+        <mxCell id="9GjPR25ph32ckkB3pJjk-114" value="$$B$$" style="whiteSpace=wrap;html=1;fontSize=14;fontFamily=Lucida Console;fillColor=#dae8fc;labelBackgroundColor=none;strokeWidth=2;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="3030" y="860" width="35" height="35" as="geometry" />
         </mxCell>
         <mxCell id="9GjPR25ph32ckkB3pJjk-119" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=default;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Comic Sans MS;fontSize=12;fontColor=default;fontStyle=0;labelBackgroundColor=none;resizable=0;edgeStyle=orthogonalEdgeStyle;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" target="9GjPR25ph32ckkB3pJjk-109">
@@ -1151,7 +1151,7 @@
             <mxPoint x="18" y="-10" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="9GjPR25ph32ckkB3pJjk-123" value="Brake Model" style="whiteSpace=wrap;html=1;fontSize=14;fontFamily=Lucida Console;fillColor=#dae8fc;labelBackgroundColor=none;strokeWidth=2;strokeColor=#6c8ebf;" vertex="1" parent="1">
+        <mxCell id="9GjPR25ph32ckkB3pJjk-123" value="Brake Model" style="whiteSpace=wrap;html=1;fontSize=14;fontFamily=Lucida Console;fillColor=#ffe6cc;labelBackgroundColor=none;strokeWidth=2;strokeColor=#d79b00;" vertex="1" parent="1">
           <mxGeometry x="2910" y="1000" width="70" height="60" as="geometry" />
         </mxCell>
         <mxCell id="9GjPR25ph32ckkB3pJjk-124" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=default;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Comic Sans MS;fontSize=12;fontColor=default;fontStyle=0;labelBackgroundColor=none;resizable=0;edgeStyle=orthogonalEdgeStyle;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" target="9GjPR25ph32ckkB3pJjk-123">
