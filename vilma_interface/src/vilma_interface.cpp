@@ -246,6 +246,7 @@ namespace vilma
             to_ma_vector_[2] = 152;                                         /// ? I really don't know why this, copied from Olmer's code.
             std::fill(to_ma_vector_.begin() + 3, to_ma_vector_.end(), 0.0); /// Filling the remaining vector with zeros.
 
+            //* Debug logging
             RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Only Receive Data Mode");
         }
         else /// Else, request data and send Joystick command
@@ -254,6 +255,7 @@ namespace vilma
 
             ma_operation_mode_ = OperationModeMA::JOYSTICK_MODE; /// Set MA's operation mode to joystick indefinitely
 
+            //* Debug logging
             RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Joystick Command Mode");
         }
 
@@ -302,6 +304,7 @@ namespace vilma
                 {
                     //* Enable control mode changing
                     change_control_mode_enabled_ = true;
+                    RCLCPP_INFO(this->get_logger(), "Control Mode changing enabled.");
                 }
             }
 
@@ -329,13 +332,15 @@ namespace vilma
                     gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::NEUTRAL;
                     break;
 
-                default: // do nothing
+                default:
+                    RCLCPP_ERROR(this->get_logger(), "Unknown gear status.");
                     break;
                 }
 
                 gear_report_pub_->publish(gear_report_msg);
             }
 
+            //* Debug logging
             RCLCPP_DEBUG(this->get_logger(), "MA -> PC | SENSORS_MA mode");
 
             break;
@@ -380,12 +385,15 @@ namespace vilma
                 control_mode_pub_->publish(control_mode_report_msg);
             }
 
+            //* Debug logging
             RCLCPP_DEBUG(this->get_logger(), "MA -> PC | STATE_MA mode");
 
             break;
         }
 
-        default: // do nothing
+        default:
+            RCLCPP_ERROR(this->get_logger(), "Unknown UDP TX message type.");
+
             break;
         }
     }
@@ -426,6 +434,8 @@ namespace vilma
                 //* Update vehicle control mode to Autoware report
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
 
+                RCLCPP_INFO(this->get_logger(), "Control Mode changed to MANUAL");
+
                 break;
 
             //* Fully autonomous mode
@@ -451,6 +461,8 @@ namespace vilma
                 //* Update vehicle control mode to Autoware report
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS;
 
+                RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS");
+
                 break;
 
             //* Autonomous steering mode
@@ -473,6 +485,8 @@ namespace vilma
 
                 //* Update vehicle control mode to Autoware report
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY;
+
+                RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS_STEER_ONLY");
 
                 break;
 
@@ -497,9 +511,12 @@ namespace vilma
                 //* Update vehicle control mode to Autoware report
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY;
 
+                RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS_VELOCITY_ONLY");
+
                 break;
 
-            default: // do nothing
+            default:
+                RCLCPP_ERROR(this->get_logger(), "Unkown Autoware control mode.");
                 break;
             }
 
@@ -547,7 +564,9 @@ namespace vilma
             //* Process received data
             from_ma(tx_type, stamp);
 
-            RCLCPP_INFO(this->get_logger(), "MA period: %f", ma_timer_dt.seconds());
+            //* Logging one time per second the MA period and delay.
+            RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MA period: %f | MA delay: %f",
+                                 ma_timer_dt.seconds(), (ma_timer_dt.seconds() - ma_timer_period_ms_ * 1e-3));
         }
         else /// Error occurred
         {
@@ -722,7 +741,8 @@ namespace vilma
 
                 break;
 
-            default: // do nothing
+            default:
+                RCLCPP_ERROR(this->get_logger(), "Unknown gear request.");
                 break;
             }
         }
