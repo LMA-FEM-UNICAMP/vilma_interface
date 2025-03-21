@@ -245,12 +245,16 @@ namespace vilma
             to_ma_vector_[1] = this->get_clock()->now().seconds();          /// Setting stamp
             to_ma_vector_[2] = 152;                                         /// ? I really don't know why this, copied from Olmer's code.
             std::fill(to_ma_vector_.begin() + 3, to_ma_vector_.end(), 0.0); /// Filling the remaining vector with zeros.
+
+            RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Only Receive Data Mode");
         }
         else /// Else, request data and send Joystick command
         {
             rx_type = RxTypeMA::JOYSTICK_MODE_COMMAND; // Configuring UDP message to joystick command
 
             ma_operation_mode_ = OperationModeMA::JOYSTICK_MODE; /// Set MA's operation mode to joystick indefinitely
+
+            RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Joystick Command Mode");
         }
 
         //* Return PC to MA (RX) UDP message type
@@ -274,6 +278,7 @@ namespace vilma
         //* Verifying the type of UDP message received
         switch (type_tx)
         {
+
         //* Vehicle sensors information
         case TxTypeMA::SENSORS_MA:
         {
@@ -329,6 +334,9 @@ namespace vilma
 
                 gear_report_pub_->publish(gear_report_msg);
             }
+
+            RCLCPP_DEBUG(this->get_logger(), "MA -> PC | SENSORS_MA mode");
+
             break;
         }
 
@@ -370,6 +378,8 @@ namespace vilma
 
                 control_mode_pub_->publish(control_mode_report_msg);
             }
+
+            RCLCPP_DEBUG(this->get_logger(), "MA -> PC | STATE_MA mode");
 
             break;
         }
@@ -533,7 +543,7 @@ namespace vilma
         if (udp_request_output.empty()) /// Successful request (no errors reported)
         {
             //* Process received data
-            from_ma(rx_type, stamp);
+            from_ma(tx_type, stamp);
 
             RCLCPP_INFO(this->get_logger(), "MA period: %f", ma_timer_dt.seconds());
         }
