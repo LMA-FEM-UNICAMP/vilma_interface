@@ -296,6 +296,7 @@ namespace vilma
 
                     //* Block control mode changing
                     change_control_mode_enabled_ = false;
+                    RCLCPP_WARN(this->get_logger(), "Control Mode changed to MANUAL by user braking.");
                 }
                 else
                 {
@@ -508,6 +509,7 @@ namespace vilma
         else /// If changing control mode is blocked
         {
             //* Return unsuccessful control mode changing
+            RCLCPP_WARN(this->get_logger(), "Control Mode change blocked!");
             return false;
         }
     }
