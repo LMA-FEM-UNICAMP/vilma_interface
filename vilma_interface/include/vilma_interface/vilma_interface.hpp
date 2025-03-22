@@ -116,12 +116,15 @@ namespace vilma
         rclcpp::Time ma_timer_last_stamp_;
         rclcpp::TimerBase::SharedPtr ma_timer_;
         rclcpp::TimerBase::SharedPtr ma_sleep_timer_;
+        rclcpp::TimerBase::SharedPtr control_timer_;
 
         int ma_timer_period_ms_;
         int ma_sleep_period_min_;
+        int control_timer_period_ms_;
 
         void ma_timer_callback();
         void ma_sleep_callback();
+        void control_timer_callback();
 
         // Autoware
 

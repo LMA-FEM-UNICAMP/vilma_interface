@@ -45,6 +45,7 @@ namespace vilma
         /* ROS2 parameters declaration */
         this->declare_parameter("ma_timer_period_ms", 10);
         this->declare_parameter("ma_sleep_period_min", 2);
+        this->declare_parameter("control_timer_period_ms", 50);
         this->declare_parameter("pc_udp_port", 5001);
         this->declare_parameter("ma_udp_port", 5001);
         this->declare_parameter("udp_timeout_ms", 4);
@@ -84,6 +85,7 @@ namespace vilma
         /* Timers period */
         ma_timer_period_ms_ = this->get_parameter("ma_timer_period_ms").as_int();
         ma_sleep_period_min_ = this->get_parameter("ma_sleep_period_min").as_int();
+        control_timer_period_ms_ = this->get_parameter("control_timer_period_ms").as_int();
 
         /* Vehicle parameters */
         brake_deadband_ = this->get_parameter("brake_deadband").as_double();
@@ -140,7 +142,7 @@ namespace vilma
         rclcpp::SubscriptionOptions autoware_sub_options;
         rclcpp::SubscriptionOptions debug_sub_options;
 
-        timers_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+        timers_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
 
         subscribers_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
@@ -155,6 +157,10 @@ namespace vilma
         ma_sleep_timer_ = this->create_wall_timer(std::chrono::minutes(ma_sleep_period_min_),
                                                   std::bind(&VilmaInterface::ma_sleep_callback, this),
                                                   timers_callback_group_);
+
+        control_timer_ = this->create_wall_timer(std::chrono::milliseconds(control_timer_period_ms_),
+                                                 std::bind(&VilmaInterface::control_timer_callback, this),
+                                                 timers_callback_group_);
 
         //* Stopping ma_sleep_timer_
         ma_sleep_timer_->cancel();
@@ -632,6 +638,45 @@ namespace vilma
 
     /**
      *
+     * @brief
+     * @param None
+     * @return void
+     */
+    void VilmaInterface::control_timer_callback()
+    {
+
+        //* Creating gas and brake value variables
+        LongActuationCommand control_action;
+
+        //* Creating brake command variable initialized in manual braking
+        /// By-Wire Braking is only enabled when autonomous braking is needed
+        control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
+
+        if (joystick_command_[JoystickMA::GAS_COMMAND] == JoystickMA::GAS_COMMAND_POSITION)
+        {
+            //* Computing control action from current speed and speed reference
+            velocity_controller_.calculate(control_action, state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED],
+                                           velocity_controller_.reference, this->get_clock()->now().seconds());
+        }
+
+        //* Assign steer value received in msg, gas value and brake data in joystick command
+        mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+        {
+            //* Stamp to flag as a new data
+            joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+
+            //* Assign gas value
+            joystick_command_[JoystickMA::GAS_VALUE] = control_action.gas_value;
+
+            //* Assign brake command and value
+            joystick_command_[JoystickMA::BRAKE_COMMAND] = control_action.brake_command;
+            joystick_command_[JoystickMA::BRAKE_VALUE] = control_action.brake_value;
+        }
+        mutex_joystick_command_.unlock(); /// Unlock mutex
+    }
+
+    /**
+     *
      * @brief Return steering normalized value [-1, 1] for a steering tire angle value;
      * @param steering_tire_angle_rad Steering tire angle in radians
      * @return Normalized value for the desired angle
@@ -652,19 +697,9 @@ namespace vilma
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
 
-        //* Creating gas and brake value variables
-        ActuationCommand control_action;
 
-        //* Creating brake command variable initialized in manual braking
-        /// By-Wire Braking is only enabled when autonomous braking is needed
-        control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
-
-        if (joystick_command_[JoystickMA::GAS_COMMAND] == JoystickMA::GAS_COMMAND_POSITION)
-        {
-            //* Computing control action from current speed and speed reference
-            velocity_controller_.calculate(control_action, state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED],
-                                           msg->longitudinal.velocity, this->get_clock()->now().seconds());
-        }
+        velocity_controller_.reference = msg->longitudinal.velocity;
+        
 
         //* Assign steer value received in msg, gas value and brake data in joystick command
         mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
@@ -674,13 +709,6 @@ namespace vilma
 
             //* Assign steering angle received from Autoware normalized by get_steering_value
             joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(msg->lateral.steering_tire_angle);
-
-            //* Assign gas value
-            joystick_command_[JoystickMA::GAS_VALUE] = control_action.gas_value;
-
-            //* Assign brake command and value
-            joystick_command_[JoystickMA::BRAKE_COMMAND] = control_action.brake_command;
-            joystick_command_[JoystickMA::BRAKE_VALUE] = control_action.brake_value;
         }
         mutex_joystick_command_.unlock(); /// Unlock mutex
     }

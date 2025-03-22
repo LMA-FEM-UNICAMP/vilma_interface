@@ -45,7 +45,7 @@ void PIDLMA::reset()
     error_sum_ = 0;
 }
 
-void PIDLMA::calculate(ActuationCommand &control_action, double value, double reference, double t)
+void PIDLMA::calculate(LongActuationCommand &control_action, double value, double reference, double t)
 {
     double dt = t - t_ant_;
 

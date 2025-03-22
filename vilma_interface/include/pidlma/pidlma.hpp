@@ -26,7 +26,7 @@
 
 #include "vilma_interface/vilma_ma_labeling.hpp"
 
-struct ActuationCommand
+struct LongActuationCommand
 {
   double brake_command = 0.0;
   double brake_value = 0.0;
@@ -45,6 +45,8 @@ class PIDLMA
   double brake_deadband_;
 
 public:
+  double reference;
+
   PIDLMA();
   PIDLMA(double ramp_rate);
 
@@ -52,7 +54,7 @@ public:
 
   void reset();
 
-  void calculate(ActuationCommand &control_action, double value, double reference, double t);
+  void calculate(LongActuationCommand &control_action, double value, double reference, double t);
 
   void update_velocity_reference_in_ramp(double velocity_target, double dt);
 };
