@@ -1,0 +1,27 @@
+vilma_interface:
+    ros__parameters:
+        ma_timer_period_ms: 10
+        ma_sleep_period_min: 2
+
+        pc_udp_port: 5001
+        ma_udp_port: 5001
+        udp_timeout_ms: 4
+        ma_ip: "192.168.140.3"
+
+        autonomous_shift_enable: false
+
+        kp_vel: 0.0015
+        ki_vel: 0.0
+        kd_vel: 0.0
+        brake_deadband: -0.1
+        speed_reference_ramp_rate: 3.0
+        brake_user_pressure_set_emergency: 10.0
+
+        max_steering_tire_angle_rad: 25.27 * 3.14156 / 180.0
+        max_gas_value: 1.0
+        max_brake_value: 1.0
+        max_speed_km_h: 60.0
+        
+        joystick_command_time_validity_ms: 500
+        communication_timeout_ms: 1000
+        autoware_command_time_validity_ms: 250
