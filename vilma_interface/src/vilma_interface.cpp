@@ -309,8 +309,11 @@ namespace vilma
                 else
                 {
                     //* Enable control mode changing
+                    if (!change_control_mode_enabled_)
+                    {
+                        RCLCPP_INFO(this->get_logger(), "Control Mode changing enabled.");
+                    }
                     change_control_mode_enabled_ = true;
-                    RCLCPP_INFO(this->get_logger(), "Control Mode changing enabled.");
                 }
             }
 
@@ -697,9 +700,7 @@ namespace vilma
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
 
-
         velocity_controller_.reference = msg->longitudinal.velocity;
-        
 
         //* Assign steer value received in msg, gas value and brake data in joystick command
         mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
