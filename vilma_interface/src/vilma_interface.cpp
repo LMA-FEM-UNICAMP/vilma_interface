@@ -304,7 +304,8 @@ namespace vilma
 
                     //* Block control mode changing
                     change_control_mode_enabled_ = false;
-                    RCLCPP_WARN(this->get_logger(), "Control Mode changed to MANUAL by user braking.");
+                    
+                    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Control Mode changed to MANUAL by user braking.");
                 }
                 else
                 {
@@ -723,7 +724,7 @@ namespace vilma
     void VilmaInterface::gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg)
     {
         //* Check if autonomous shift is enabled
-        if (autonomous_shift_enable_) // It is
+        if (autonomous_shift_enable_) // If is
         {
             //* Select new gear from Autoware command
             switch (msg->command)
