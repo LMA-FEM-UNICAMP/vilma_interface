@@ -64,39 +64,37 @@ namespace vilma
         this->declare_parameter("joystick_command_time_validity_ms", 500);
         this->declare_parameter("communication_timeout_ms", 1000);
         this->declare_parameter("autoware_command_time_validity_ms", 250);
+        this->declare_parameter("control_timer_period_ms", 100);
 
         /* UDP communication parameters */
         int pc_udp_port = this->get_parameter("pc_udp_port").as_int();
         int ma_udp_port = this->get_parameter("ma_udp_port").as_int();
         int udp_timeout_ms = this->get_parameter("udp_timeout_ms").as_int();
         std::string ma_ip = this->get_parameter("ma_ip").as_string();
+        ma_timer_period_ms_ = this->get_parameter("ma_timer_period_ms").as_int();
+        ma_sleep_period_min_ = this->get_parameter("ma_sleep_period_min").as_int();
 
-        /* PID control parameters*/
+        /* Longitudinal velocity controller parameters */
         double kp_vel = this->get_parameter("kp_vel").as_double();
         double ki_vel = this->get_parameter("ki_vel").as_double();
         double kd_vel = this->get_parameter("kd_vel").as_double();
-
-        /* Command time validity*/
-        autoware_command_time_validity_ms_ = this->get_parameter("autoware_command_time_validity_ms").as_int();
-        communication_timeout_ms_ = this->get_parameter("communication_timeout_ms").as_int();
-
-        double joystick_command_time_validity_ms = this->get_parameter("joystick_command_time_validity_ms").as_int();
-
-        /* Timers period */
-        ma_timer_period_ms_ = this->get_parameter("ma_timer_period_ms").as_int();
-        ma_sleep_period_min_ = this->get_parameter("ma_sleep_period_min").as_int();
+        brake_deadband_ = this->get_parameter("brake_deadband").as_double();
+        speed_reference_ramp_rate_ = this->get_parameter("speed_reference_ramp_rate").as_double();
+        brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
+        autonomous_shift_enable_ = this->get_parameter("autonomous_shift_enable").as_bool();
         control_timer_period_ms_ = this->get_parameter("control_timer_period_ms").as_int();
 
+        /* Command time validity */
+        autoware_command_time_validity_ms_ = this->get_parameter("autoware_command_time_validity_ms").as_int();
+        communication_timeout_ms_ = this->get_parameter("communication_timeout_ms").as_int();
+        double joystick_command_time_validity_ms = this->get_parameter("joystick_command_time_validity_ms").as_int();
+
         /* Vehicle parameters */
-        brake_deadband_ = this->get_parameter("brake_deadband").as_double();
         max_steering_tire_angle_rad_ = this->get_parameter("max_steering_tire_angle_rad").as_double();
         max_gas_value_ = this->get_parameter("max_gas_value").as_double();
         max_brake_value_ = this->get_parameter("max_brake_value").as_double();
         max_speed_m_s_ = this->get_parameter("max_speed_km_h").as_double() / 3.6;
-        speed_reference_ramp_rate_ = this->get_parameter("speed_reference_ramp_rate").as_double();
-        autonomous_shift_enable_ = this->get_parameter("autonomous_shift_enable").as_bool();
-        brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
-
+        
         /// Initialization and configuration of attributes
 
         /* Vehicle variables initialization */
