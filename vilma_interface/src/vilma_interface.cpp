@@ -251,7 +251,7 @@ namespace vilma
             std::fill(to_ma_vector_.begin() + 3, to_ma_vector_.end(), 0.0); /// Filling the remaining vector with zeros.
 
             //* Debug logging
-            RCLCPP_INFO(this->get_logger(), "PC -> MA | Only Receive Data Mode");
+            RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Only Receive Data Mode");
         }
         else /// Else, request data and send Joystick command
         {
@@ -260,7 +260,7 @@ namespace vilma
             ma_operation_mode_ = OperationModeMA::JOYSTICK_MODE; /// Set MA's operation mode to joystick indefinitely
 
             //* Debug logging
-            RCLCPP_INFO(this->get_logger(), "PC -> MA | Joystick Command Mode");
+            RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Joystick Command Mode");
         }
 
         //* Return PC to MA (RX) UDP message type
@@ -349,7 +349,7 @@ namespace vilma
             }
 
             //* Debug logging
-            RCLCPP_INFO(this->get_logger(), "MA -> PC | SENSORS_MA mode");
+            RCLCPP_DEBUG(this->get_logger(), "MA -> PC | SENSORS_MA mode");
 
             break;
         }
@@ -394,7 +394,7 @@ namespace vilma
             }
 
             //* Debug logging
-            RCLCPP_INFO(this->get_logger(), "MA -> PC | STATE_MA mode");
+            RCLCPP_DEBUG(this->get_logger(), "MA -> PC | STATE_MA mode");
 
             break;
         }
