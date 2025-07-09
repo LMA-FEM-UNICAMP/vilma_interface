@@ -64,7 +64,6 @@ namespace vilma
         this->declare_parameter("joystick_command_time_validity_ms", 500);
         this->declare_parameter("communication_timeout_ms", 1000);
         this->declare_parameter("autoware_command_time_validity_ms", 250);
-        this->declare_parameter("control_timer_period_ms", 100);
 
         /* UDP communication parameters */
         int pc_udp_port = this->get_parameter("pc_udp_port").as_int();
@@ -162,6 +161,7 @@ namespace vilma
 
         //* Stopping ma_sleep_timer_
         ma_sleep_timer_->cancel();
+        control_timer_->cancel();
 
         //* Initialization of ma_timer_last_stamp_
         ma_timer_last_stamp_ = this->get_clock()->now();
@@ -251,7 +251,7 @@ namespace vilma
             std::fill(to_ma_vector_.begin() + 3, to_ma_vector_.end(), 0.0); /// Filling the remaining vector with zeros.
 
             //* Debug logging
-            RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Only Receive Data Mode");
+            RCLCPP_INFO(this->get_logger(), "PC -> MA | Only Receive Data Mode");
         }
         else /// Else, request data and send Joystick command
         {
@@ -260,7 +260,7 @@ namespace vilma
             ma_operation_mode_ = OperationModeMA::JOYSTICK_MODE; /// Set MA's operation mode to joystick indefinitely
 
             //* Debug logging
-            RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Joystick Command Mode");
+            RCLCPP_INFO(this->get_logger(), "PC -> MA | Joystick Command Mode");
         }
 
         //* Return PC to MA (RX) UDP message type
@@ -349,7 +349,7 @@ namespace vilma
             }
 
             //* Debug logging
-            RCLCPP_DEBUG(this->get_logger(), "MA -> PC | SENSORS_MA mode");
+            RCLCPP_INFO(this->get_logger(), "MA -> PC | SENSORS_MA mode");
 
             break;
         }
@@ -394,7 +394,7 @@ namespace vilma
             }
 
             //* Debug logging
-            RCLCPP_DEBUG(this->get_logger(), "MA -> PC | STATE_MA mode");
+            RCLCPP_INFO(this->get_logger(), "MA -> PC | STATE_MA mode");
 
             break;
         }
@@ -442,6 +442,8 @@ namespace vilma
                 //* Update vehicle control mode to Autoware report
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
 
+                control_timer_->cancel();
+
                 RCLCPP_INFO(this->get_logger(), "Control Mode changed to MANUAL");
 
                 break;
@@ -468,6 +470,8 @@ namespace vilma
 
                 //* Update vehicle control mode to Autoware report
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS;
+
+                control_timer_->reset();
 
                 RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS");
 
@@ -518,6 +522,8 @@ namespace vilma
 
                 //* Update vehicle control mode to Autoware report
                 vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY;
+
+                control_timer_->reset();
 
                 RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS_VELOCITY_ONLY");
 
