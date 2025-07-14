@@ -72,6 +72,7 @@ namespace vilma
     private:
         // Attributes
 
+        /* MA */
         microautobox::maudp ma_udp_client;
         std::mutex mutex_joystick_command_;
         std::vector<double> joystick_command_;
@@ -80,11 +81,11 @@ namespace vilma
         int to_ma_length_;
         int from_ma_length_;
 
+        /* Vehicle Control */
         int ma_operation_mode_;
         uint8_t vilma_control_mode_;
         bool change_control_mode_enabled_;
-
-        /* Vehicle */
+        PIDLMA velocity_controller_;
         double brake_deadband_;
         double max_steering_tire_angle_rad_;
         double max_gas_value_;
@@ -93,8 +94,6 @@ namespace vilma
         double speed_reference_ramp_rate_;
         double brake_user_pressure_set_emergency_;
         bool autonomous_shift_enable_;
-
-        PIDLMA velocity_controller_;
 
         /* Command validation */
         int autoware_command_time_validity_ms_;
