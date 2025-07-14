@@ -47,7 +47,7 @@
         autoware_command_time_validity_ms: 250
 
         # Vehicle
-        max_steering_tire_angle_rad: 25.27 * 3.14156 / 180.0
+        max_steering_tire_angle_rad: 0.4410 # 25.27 degrees
         max_gas_value: 1.0
         max_brake_value: 1.0
         max_speed_km_h: 60.0
