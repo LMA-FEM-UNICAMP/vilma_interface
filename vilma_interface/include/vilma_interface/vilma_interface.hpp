@@ -41,6 +41,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "std_msgs/msg/float64_multi_array.hpp"
+#include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/header.hpp"
 
 /* Autoware includes */
@@ -178,6 +179,13 @@ namespace vilma
         /* Callbacks */
 
         void joystick_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg);
+
+        // HMI
+
+        /* Publishers */
+
+        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_throttle_pub_;    
+        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_braking_pub_;    
     };
 
 } // namespace vilma

@@ -93,7 +93,7 @@ namespace vilma
         max_gas_value_ = this->get_parameter("max_gas_value").as_double();
         max_brake_value_ = this->get_parameter("max_brake_value").as_double();
         max_speed_m_s_ = this->get_parameter("max_speed_km_h").as_double() / 3.6;
-        
+
         /// Initialization and configuration of attributes
 
         /* Vehicle variables initialization */
@@ -210,6 +210,12 @@ namespace vilma
 
         sensors_ma_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/vilma_ma_debug/sensors_ma", rclcpp::QoS{1});
+
+        hmi_throttle_pub_ = this->create_publisher<std_msgs::msg::Float32>(
+            "/hmi/throttle", rclcpp::QoS{1});
+
+        hmi_braking_pub_ = this->create_publisher<std_msgs::msg::Float32>(
+            "/hmi/braking", rclcpp::QoS{1});
     }
 
     /**
@@ -302,7 +308,7 @@ namespace vilma
 
                     //* Block control mode changing
                     change_control_mode_enabled_ = false;
-                    
+
                     RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Control Mode changed to MANUAL by user braking.");
                 }
                 else
@@ -681,6 +687,16 @@ namespace vilma
             joystick_command_[JoystickMA::BRAKE_VALUE] = control_action.brake_value;
         }
         mutex_joystick_command_.unlock(); /// Unlock mutex
+
+        //* Printing throttling and braking in the HMI
+        std_msgs::msg::Float32 throttle_value_hmi;
+        std_msgs::msg::Float32 braking_value_hmi;
+
+        throttle_value_hmi.data = control_action.gas_value;
+        braking_value_hmi.data = control_action.brake_value;
+
+        hmi_throttle_pub_->publish(throttle_value_hmi);
+        hmi_braking_pub_->publish(braking_value_hmi);
     }
 
     /**
