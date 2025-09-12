@@ -151,7 +151,6 @@ extern "C"
 
 	int maencode(unsigned char *buff, double *trama, int *tipe, int length_trama, int PROCESSORTYPE);
 
-
 	/***
 	 *
 	 * @param data
@@ -161,14 +160,12 @@ extern "C"
 
 	int madecode(double *trama, unsigned char *data, int *tipe, int length_tipe, int PROCESSORTYPE);
 
-
 	/***
 	 * @param data in unsigned int to be returned
 	 * @param data in unsigned char
 	 * @return  0 is ok
 	 */
 	int maencodetouint32(unsigned int *buff, unsigned char *data, int length_bytes, int PROCESSORTYPE);
-
 
 	/***
 	 * @param buff in unsigned char to be returned
@@ -177,10 +174,8 @@ extern "C"
 	 */
 	int maencodetobyte(unsigned char *buff, unsigned int *data, int length_bytes, int PROCESSORTYPE);
 
-
 	unsigned int crc_msb(const unsigned char *data, int size, unsigned int generator);
 
-	
 	// Direct computation, lsb-first
 	unsigned int crc_lsb(const unsigned char *data, int size, unsigned int generator);
 

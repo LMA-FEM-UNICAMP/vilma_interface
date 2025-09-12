@@ -5,7 +5,7 @@
  *http://www.streamingmedia.com/Articles/Editorial/Featured-Articles/Reliable-UDP-(RUDP)-The-Next-Big-Streaming-Protocol-85316.aspx
  *http://udt.sourceforge.net/software.html
  *https://www.chromium.org/quic
- *http://users.ece.cmu.edu/~koopman/pubs/KoopmanCRCWebinar9May2012.pdf
+ *http://users.ece.cmu.edu/ckoopman/pubs/KoopmanCRCWebinar9May2012.pdf
  * @author olmer Garcia olmerg@gmail.com
  *
  * Copyright 2013 Olmer Garcia Bedoya
@@ -43,6 +43,7 @@ namespace microautobox
     public:
         maudp(short port, short port_client, std::string IP_client, boost::posix_time::time_duration _timeout, int size_in, int size_out, int C_PROCESSORTYPE = BIGENDIAN)
         {
+            (void)C_PROCESSORTYPE;
             configure(port, port_client, IP_client, _timeout, size_in, size_out);
         };
 
@@ -167,6 +168,8 @@ namespace microautobox
         void tcp_route(unsigned char *buffer_tosend_ptr, unsigned int &buffer_tosend_size, unsigned char *buffer_received_ptr, unsigned int &buffer_received_size)
         {
 
+            (void)buffer_received_size;
+
             //  std::vector<unsigned char> buffer_tcp_received(buffer_received_ptr,buffer_received_ptr+buffer_received_size);
             std::string Message;
             int ii = 1;
@@ -184,6 +187,7 @@ namespace microautobox
             i = maencode(&buffer_tosend_ptr[2], &tmp, &tipodato[1], ii, processortype);
 
             i = maencode(&buffer_tosend_ptr[2], &data_received_1[0], &tipodato[3], data_received_1.size(), processortype);
+            (void)i;
         }
 
         int get_udp_bytes()
@@ -245,7 +249,7 @@ namespace microautobox
             send_data();
             int bytes_recvd = _udp_socket.clientrequest(&buffer_received[0], &buffer_tosend[0], buffer_tosend.size(), message);
             //@todo: i think we can generate an alarm if(bytes_recvd!=buffer_received.size())?
-            if (bytes_recvd != buffer_received.size() && bytes_recvd > 0)
+            if (bytes_recvd != static_cast<int>(buffer_received.size()) && bytes_recvd > 0)
             {
                 message.append("ERROR. RX buffer with  wrong length of bytes: ");
                 message.append(toString<int>(bytes_recvd));
@@ -261,12 +265,13 @@ namespace microautobox
         int processbuffer(int bytes_recvd)
         {
             // std::vector<unsigned char> v(buffer_received_ptr, buffer_received_ptr + bytes_recvd);
-            if (bytes_recvd == bytes_udp)
+            if (bytes_recvd == static_cast<int>(bytes_udp))
             {
                 // checksum of the buffer received except the las 4 bytes
                 checksum = crc_msb(&buffer_received[0], bytes_recvd - 4, GEN_ANSI_MSB);
                 // convert to double the buffer received
                 int i = madecode(&trama[0], &buffer_received[0], &tipodato[0], trama.size(), processortype);
+                (void)i;
 #ifdef DEBUG
                 std::cout << "datos recibidos \n";
                 for (int i = 0; i < trama.size(); i++)
@@ -365,6 +370,7 @@ namespace microautobox
 
             // prot.maencode<double>(buffer_tosend,trama,tipodato);
             int i = maencode(&buffer_tosend[0], &trama[0], &tipodato[0], trama.size() - 1, processortype);
+            (void)i;
 
             // add checksum
             checksum_1 = crc_msb(&buffer_tosend[0], buffer_tosend.size() - 4, GEN_ANSI_MSB);

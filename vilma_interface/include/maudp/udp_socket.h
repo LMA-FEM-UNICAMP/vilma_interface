@@ -24,11 +24,12 @@
 #include <boost/thread/mutex.hpp>
 // #include "boost/assign/std/vector.hpp"
 #include <boost/date_time/posix_time/posix_time_types.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_service.hpp>
 #include <sstream>
+
 
 using boost::asio::deadline_timer;
 using boost::asio::ip::udp;
@@ -128,7 +129,7 @@ namespace microautobox
             recieved_endpoint_.address(boost::asio::ip::address::from_string(IP_client));
             recieved_endpoint_.port(port_client);
             timeout = _timeout;
-            if (~socket_server.is_open())
+            if (!socket_server.is_open())
                 return open_udp_socket();
 
             return false;
@@ -416,7 +417,7 @@ namespace microautobox
         void handle_tx(const boost::system::error_code &ec, std::size_t length)
         {
             _message_sent = true;
-            if (!ec && length == length_tx)
+            if (!ec && static_cast<int>(length) == length_tx)
             {
                 if (_clientmode)
                 {
@@ -428,7 +429,7 @@ namespace microautobox
                                     boost::asio::placeholders::error,
                                     boost::asio::placeholders::bytes_transferred));
                 }
-                length_tx = length;
+                length_tx = static_cast<int>(length);
             }
             else
             {
