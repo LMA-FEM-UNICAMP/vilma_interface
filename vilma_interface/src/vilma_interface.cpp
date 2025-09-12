@@ -299,6 +299,11 @@ namespace vilma
             std::copy(from_ma_vector_.begin(), from_ma_vector_.end(), sensors_ma_msg_.data.begin() + 1);
             sensors_ma_pub_->publish(sensors_ma_msg_);
 
+            if (sensors_ma_msg_.data[SensorsMA::TIME_PCC_BRAKE] < 0.0)
+            {
+                RCLCPP_FATAL(this->get_logger(), "Connection with brake ECU lost.");
+            }
+
             //* Verify that the user brake pedal was pressed | Emergency -- User braking
             {
                 if (sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_)
