@@ -307,18 +307,26 @@ namespace vilma
                     set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
 
                     //* Block control mode changing
+
+                    mutex_change_control_mode_enabled_.lock();
                     change_control_mode_enabled_ = false;
+                    mutex_change_control_mode_enabled_.unlock();
 
                     RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Control Mode changed to MANUAL by user braking.");
                 }
                 else
                 {
                     //* Enable control mode changing
-                    if (!change_control_mode_enabled_)
+
+                    mutex_change_control_mode_enabled_.lock();
                     {
-                        RCLCPP_INFO(this->get_logger(), "Control Mode changing enabled.");
+                        if (!change_control_mode_enabled_)
+                        {
+                            RCLCPP_INFO(this->get_logger(), "Control Mode changing enabled again.");
+                        }
+                        change_control_mode_enabled_ = true;
                     }
-                    change_control_mode_enabled_ = true;
+                    mutex_change_control_mode_enabled_.unlock();
                 }
             }
 
@@ -394,7 +402,9 @@ namespace vilma
             {
                 autoware_vehicle_msgs::msg::ControlModeReport control_mode_report_msg;
 
+                mutex_vilma_control_mode_.lock();
                 control_mode_report_msg.mode = vilma_control_mode_;
+                mutex_vilma_control_mode_.unlock();
 
                 control_mode_pub_->publish(control_mode_report_msg);
             }
@@ -421,134 +431,147 @@ namespace vilma
     bool VilmaInterface::set_control_mode(uint8_t control_mode)
     {
         //* Check if changing control mode is permitted
-        if (change_control_mode_enabled_) /// If yes
+        mutex_change_control_mode_enabled_.lock();
         {
-            //* Select the desired new control mode
-            switch (control_mode)
+            if (change_control_mode_enabled_) /// If yes
             {
-            //* Manual mode
-            case autoware_vehicle_msgs::msg::ControlModeReport::MANUAL:
-
-                mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                //* Select the desired new control mode
+                switch (control_mode)
                 {
-                    //* Stamp to flag as a new data
-                    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+                //* Manual mode
+                case autoware_vehicle_msgs::msg::ControlModeReport::MANUAL:
 
-                    //* Set gas command in manual mode
-                    joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_OFF;
+                    mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                    {
+                        //* Stamp to flag as a new data
+                        joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-                    //* Set steer command in manual mode
-                    joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
+                        //* Set gas command in manual mode
+                        joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_OFF;
 
-                    //* Set gear command in manual mode
-                    joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_OFF;
+                        //* Set steer command in manual mode
+                        joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
+
+                        //* Set gear command in manual mode
+                        joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_OFF;
+                    }
+                    mutex_joystick_command_.unlock(); /// Unlock mutex
+
+                    //* Update vehicle control mode to Autoware report
+
+                    mutex_vilma_control_mode_.lock();
+                    vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
+                    mutex_vilma_control_mode_.unlock();
+
+                    control_timer_->cancel();
+
+                    RCLCPP_INFO(this->get_logger(), "Control Mode changed to MANUAL");
+
+                    break;
+
+                //* Fully autonomous mode
+                case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS:
+
+                    mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                    {
+                        //* Stamp to flag as a new data
+                        joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+
+                        //* Set gas command in position mode [0.0, 1.0]
+                        joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
+                        //* Avoid send old gas value
+                        joystick_command_[JoystickMA::GAS_VALUE] = 0.0;
+
+                        //* Set steer command in position mode [-1.0, 1.0]
+                        joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
+                        //* Avoid send old steer value
+                        joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
+                    }
+                    mutex_joystick_command_.unlock(); /// Unlock mutex
+
+                    //* Update vehicle control mode to Autoware report
+                    mutex_vilma_control_mode_.lock();
+                    vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS;
+                    mutex_vilma_control_mode_.unlock();
+
+                    control_timer_->reset();
+
+                    RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS");
+
+                    break;
+
+                //* Autonomous steering mode
+                case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY:
+
+                    mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                    {
+                        //* Stamp to flag as a new data
+                        joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+
+                        //* Set gas command in manual
+                        joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_OFF;
+
+                        //* Set steer command in position mode [-1.0, 1.0]
+                        joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
+                        //* Avoid send old steer value
+                        joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
+                    }
+                    mutex_joystick_command_.unlock(); /// Unlock mutex
+
+                    //* Update vehicle control mode to Autoware report
+                    mutex_vilma_control_mode_.lock();
+                    vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY;
+                    mutex_vilma_control_mode_.unlock();
+
+                    RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS_STEER_ONLY");
+
+                    break;
+
+                //* Autonomous velocity mode
+                case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY:
+
+                    mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+                    {
+                        //* Stamp to flag as a new data
+                        joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+
+                        //* Set gas command in position mode [0.0, 1.0]
+                        joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
+                        //* Avoid send old gas value
+                        joystick_command_[JoystickMA::GAS_VALUE] = 0.0;
+
+                        //* Set steer command in manual mode
+                        joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
+                    }
+                    mutex_joystick_command_.unlock(); /// Unlock mutex
+
+                    //* Update vehicle control mode to Autoware report
+                    mutex_vilma_control_mode_.lock();
+                    vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY;
+                    mutex_vilma_control_mode_.unlock();
+
+                    control_timer_->reset();
+
+                    RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS_VELOCITY_ONLY");
+
+                    break;
+
+                default:
+                    RCLCPP_ERROR(this->get_logger(), "Unkown Autoware control mode.");
+                    break;
                 }
-                mutex_joystick_command_.unlock(); /// Unlock mutex
 
-                //* Update vehicle control mode to Autoware report
-                vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
-
-                control_timer_->cancel();
-
-                RCLCPP_INFO(this->get_logger(), "Control Mode changed to MANUAL");
-
-                break;
-
-            //* Fully autonomous mode
-            case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS:
-
-                mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
-                {
-                    //* Stamp to flag as a new data
-                    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
-
-                    //* Set gas command in position mode [0.0, 1.0]
-                    joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
-                    //* Avoid send old gas value
-                    joystick_command_[JoystickMA::GAS_VALUE] = 0.0;
-
-                    //* Set steer command in position mode [-1.0, 1.0]
-                    joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
-                    //* Avoid send old steer value
-                    joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
-                }
-                mutex_joystick_command_.unlock(); /// Unlock mutex
-
-                //* Update vehicle control mode to Autoware report
-                vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS;
-
-                control_timer_->reset();
-
-                RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS");
-
-                break;
-
-            //* Autonomous steering mode
-            case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY:
-
-                mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
-                {
-                    //* Stamp to flag as a new data
-                    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
-
-                    //* Set gas command in manual
-                    joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_OFF;
-
-                    //* Set steer command in position mode [-1.0, 1.0]
-                    joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
-                    //* Avoid send old steer value
-                    joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
-                }
-                mutex_joystick_command_.unlock(); /// Unlock mutex
-
-                //* Update vehicle control mode to Autoware report
-                vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY;
-
-                RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS_STEER_ONLY");
-
-                break;
-
-            //* Autonomous velocity mode
-            case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY:
-
-                mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
-                {
-                    //* Stamp to flag as a new data
-                    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
-
-                    //* Set gas command in position mode [0.0, 1.0]
-                    joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
-                    //* Avoid send old gas value
-                    joystick_command_[JoystickMA::GAS_VALUE] = 0.0;
-
-                    //* Set steer command in manual mode
-                    joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
-                }
-                mutex_joystick_command_.unlock(); /// Unlock mutex
-
-                //* Update vehicle control mode to Autoware report
-                vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY;
-
-                control_timer_->reset();
-
-                RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS_VELOCITY_ONLY");
-
-                break;
-
-            default:
-                RCLCPP_ERROR(this->get_logger(), "Unkown Autoware control mode.");
-                break;
+                //* Return successful control mode changing
+                return true;
             }
-
-            //* Return successful control mode changing
-            return true;
+            else /// If changing control mode is blocked
+            {
+                //* Return unsuccessful control mode changing
+                RCLCPP_WARN(this->get_logger(), "Control Mode change blocked!");
+                return false;
+            }
         }
-        else /// If changing control mode is blocked
-        {
-            //* Return unsuccessful control mode changing
-            RCLCPP_WARN(this->get_logger(), "Control Mode change blocked!");
-            return false;
-        }
+        mutex_change_control_mode_enabled_.unlock();
     }
 
     /**
@@ -666,16 +689,18 @@ namespace vilma
         /// By-Wire Braking is only enabled when autonomous braking is needed
         control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
 
-        if (joystick_command_[JoystickMA::GAS_COMMAND] == JoystickMA::GAS_COMMAND_POSITION)
+        mutex_joystick_command_.lock(); /// Lock mutex to read and update shared variable joystick_command_
         {
-            //* Computing control action from current speed and speed reference
-            velocity_controller_.calculate(control_action, state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED],
-                                           velocity_controller_.reference, this->get_clock()->now().seconds());
-        }
+            if (joystick_command_[JoystickMA::GAS_COMMAND] == JoystickMA::GAS_COMMAND_POSITION)
+            {
+                //* Computing control action from current speed and speed reference
+                mutex_velocity_controller_.lock();
+                velocity_controller_.calculate(control_action, state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED],
+                                               velocity_controller_.reference, this->get_clock()->now().seconds());
+                mutex_velocity_controller_.unlock();
+            }
 
-        //* Assign steer value received in msg, gas value and brake data in joystick command
-        mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
-        {
+            //* Assign steer value received in msg, gas value and brake data in joystick command
             //* Stamp to flag as a new data
             joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
@@ -720,8 +745,9 @@ namespace vilma
      */
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
-
+        mutex_velocity_controller_.lock();
         velocity_controller_.reference = msg->longitudinal.velocity;
+        mutex_velocity_controller_.unlock();
 
         //* Assign steer value received in msg, gas value and brake data in joystick command
         mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_

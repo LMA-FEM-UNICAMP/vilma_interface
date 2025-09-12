@@ -73,9 +73,14 @@ namespace vilma
     private:
         // Attributes
 
+        /* Mutexes */
+        std::mutex mutex_joystick_command_;
+        std::mutex mutex_velocity_controller_;
+        std::mutex mutex_vilma_control_mode_;
+        std::mutex mutex_change_control_mode_enabled_;
+
         /* MA */
         microautobox::maudp ma_udp_client;
-        std::mutex mutex_joystick_command_;
         std::vector<double> joystick_command_;
         std::vector<double> to_ma_vector_;
         std::vector<double> from_ma_vector_;

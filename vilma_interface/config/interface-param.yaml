@@ -32,9 +32,14 @@
         ma_sleep_period_min: 2
 
         # Controller
-        kp_vel: 0.0015
-        ki_vel: 0.0
-        kd_vel: 0.0
+        ## Opt 1
+        kp_vel: 0.05
+        ki_vel: 0.02
+        kd_vel: 0.001
+        ## Opt 2
+        # kp_vel: 0.0006
+        # ki_vel: 0.001
+        # kd_vel: 0.002
         brake_deadband: -0.1
         speed_reference_ramp_rate: 3.0
         brake_user_pressure_set_emergency: 10.0
