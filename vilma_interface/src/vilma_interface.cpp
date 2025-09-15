@@ -848,7 +848,7 @@ namespace vilma
             //* Request change control mode to AUTONOMOUS
             set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS);
         }
-        else /// Disengage Autoware (fully autonomous mode)
+        else /// Disengage Autoware (manual mode)
         {
             //* Request change control mode to MANUAL
             set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
@@ -866,9 +866,6 @@ namespace vilma
         const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
         const autoware_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response)
     {
-
-        RCLCPP_INFO(this->get_logger(), "control_mode_request service called!");
-
         //* Request change control mode to Autoware mode requested and assign
         //* the response status to service request answer
         response->success = set_control_mode(request->mode);
