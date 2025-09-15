@@ -50,7 +50,7 @@ public:
   PIDLMA();
   PIDLMA(double ramp_rate);
 
-  void configure(double k_p, double k_d, double k_i, double t, double ramp_rate, double brake_deadband_);
+  void configure(double k_p, double k_d, double k_i, double t, double ramp_rate, double brake_deadband);
 
   void reset();
 

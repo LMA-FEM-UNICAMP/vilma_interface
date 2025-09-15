@@ -27,7 +27,7 @@ PIDLMA::PIDLMA()
     configure(0.0, 0.0, 0.0, 0.0, 3.0, -0.1);
 }
 
-void PIDLMA::configure(double k_p, double k_d, double k_i, double t, double ramp_rate, double brake_deadband_)
+void PIDLMA::configure(double k_p, double k_d, double k_i, double t, double ramp_rate, double brake_deadband)
 {
     kp_ = k_p;
     kd_ = k_d;
@@ -37,6 +37,8 @@ void PIDLMA::configure(double k_p, double k_d, double k_i, double t, double ramp
     u_ = 0;
     t_ant_ = t;
     velocity_reference_in_ramp_ = 0;
+    ramp_rate_ = ramp_rate;
+    brake_deadband_ = brake_deadband;
 }
 
 void PIDLMA::reset()

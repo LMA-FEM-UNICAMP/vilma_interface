@@ -216,6 +216,8 @@ namespace vilma
 
         hmi_braking_pub_ = this->create_publisher<std_msgs::msg::Float32>(
             "/hmi/braking", rclcpp::QoS{1});
+
+        set_control_mode(vilma_control_mode_);
     }
 
     /**
@@ -322,16 +324,14 @@ namespace vilma
                 else
                 {
                     //* Enable control mode changing
-
-                    mutex_change_control_mode_enabled_.lock();
+                    if (!change_control_mode_enabled_)
                     {
-                        if (!change_control_mode_enabled_)
-                        {
-                            RCLCPP_INFO(this->get_logger(), "Control Mode changing enabled again.");
-                        }
+                        RCLCPP_INFO(this->get_logger(), "Control Mode changing enabled again.");
+
+                        mutex_change_control_mode_enabled_.lock();
                         change_control_mode_enabled_ = true;
+                        mutex_change_control_mode_enabled_.unlock();
                     }
-                    mutex_change_control_mode_enabled_.unlock();
                 }
             }
 
@@ -435,9 +435,12 @@ namespace vilma
      */
     bool VilmaInterface::set_control_mode(uint8_t control_mode)
     {
+        bool success = false; // Return of the command mode change
+
         //* Check if changing control mode is permitted
         mutex_change_control_mode_enabled_.lock();
         {
+
             if (change_control_mode_enabled_) /// If yes
             {
                 //* Select the desired new control mode
@@ -567,16 +570,18 @@ namespace vilma
                 }
 
                 //* Return successful control mode changing
-                return true;
+                success = true;
             }
             else /// If changing control mode is blocked
             {
                 //* Return unsuccessful control mode changing
                 RCLCPP_WARN(this->get_logger(), "Control Mode change blocked!");
-                return false;
+                success = false;
             }
         }
         mutex_change_control_mode_enabled_.unlock();
+        
+        return success;
     }
 
     /**
@@ -861,6 +866,9 @@ namespace vilma
         const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
         const autoware_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response)
     {
+
+        RCLCPP_INFO(this->get_logger(), "control_mode_request service called!");
+
         //* Request change control mode to Autoware mode requested and assign
         //* the response status to service request answer
         response->success = set_control_mode(request->mode);
