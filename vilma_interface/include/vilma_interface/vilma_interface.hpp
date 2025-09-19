@@ -36,6 +36,9 @@
 #include <vector>
 #include <string>
 
+#include <mutex>
+#include <atomic>
+
 // ROS includes
 
 #include <rclcpp/rclcpp.hpp>
@@ -76,8 +79,6 @@ namespace vilma
         /* Mutexes */
         std::mutex mutex_joystick_command_;
         std::mutex mutex_velocity_controller_;
-        std::mutex mutex_vilma_control_mode_;
-        std::mutex mutex_change_control_mode_enabled_;
 
         /* MA */
         microautobox::maudp ma_udp_client;
@@ -89,8 +90,8 @@ namespace vilma
 
         /* Vehicle Control */
         int ma_operation_mode_;
-        uint8_t vilma_control_mode_;
-        bool change_control_mode_enabled_;
+        std::atomic<uint8_t> vilma_control_mode_;
+        std::atomic<bool> change_control_mode_enabled_;
         PIDLMA velocity_controller_;
         double brake_deadband_;
         double max_steering_tire_angle_rad_;

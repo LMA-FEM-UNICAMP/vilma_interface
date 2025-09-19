@@ -99,15 +99,17 @@ namespace vilma
         /* Vehicle variables initialization */
         ma_operation_mode_ = OperationModeMA::MANUAL_MODE;
         vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
-        change_control_mode_enabled_ = true;
+        change_control_mode_enabled_.store(true);
 
         /* MA messages configuration */
         to_ma_length_ = 10;
         from_ma_length_ = 30;
 
+        mutex_joystick_command_.lock();
         joystick_command_.reserve(to_ma_length_);
         joystick_command_.resize(to_ma_length_, 0.0);
         joystick_command_[JoystickMA::TIME_VALIDITY] = joystick_command_time_validity_ms;
+        mutex_joystick_command_.unlock();
 
         to_ma_vector_.reserve(to_ma_length_);
         to_ma_vector_.resize(to_ma_length_, 0.0);
@@ -131,8 +133,10 @@ namespace vilma
         }
 
         //* Configure velocity controller
+        mutex_velocity_controller_.lock();
         velocity_controller_.configure(kp_vel, kd_vel, ki_vel, this->get_clock()->now().seconds(),
                                        speed_reference_ramp_rate_, brake_deadband_);
+        mutex_velocity_controller_.unlock();
 
         /// ROS2 entities
 
@@ -314,23 +318,19 @@ namespace vilma
                     set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
 
                     //* Block control mode changing
-
-                    mutex_change_control_mode_enabled_.lock();
-                    change_control_mode_enabled_ = false;
-                    mutex_change_control_mode_enabled_.unlock();
+                    change_control_mode_enabled_.store(false);
 
                     RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Control Mode changed to MANUAL by user braking.");
                 }
                 else
                 {
                     //* Enable control mode changing
-                    if (!change_control_mode_enabled_)
+                    if (!change_control_mode_enabled_.load())
                     {
                         RCLCPP_INFO(this->get_logger(), "Control Mode changing enabled again.");
 
-                        mutex_change_control_mode_enabled_.lock();
-                        change_control_mode_enabled_ = true;
-                        mutex_change_control_mode_enabled_.unlock();
+                        //* Unblock control mode changing
+                        change_control_mode_enabled_.store(true);
                     }
                 }
             }
@@ -407,9 +407,7 @@ namespace vilma
             {
                 autoware_vehicle_msgs::msg::ControlModeReport control_mode_report_msg;
 
-                mutex_vilma_control_mode_.lock();
-                control_mode_report_msg.mode = vilma_control_mode_;
-                mutex_vilma_control_mode_.unlock();
+                control_mode_report_msg.mode = vilma_control_mode_.load();
 
                 control_mode_pub_->publish(control_mode_report_msg);
             }
@@ -438,10 +436,9 @@ namespace vilma
         bool success = false; // Return of the command mode change
 
         //* Check if changing control mode is permitted
-        mutex_change_control_mode_enabled_.lock();
         {
 
-            if (change_control_mode_enabled_) /// If yes
+            if (change_control_mode_enabled_.load()) /// If yes
             {
                 //* Select the desired new control mode
                 switch (control_mode)
@@ -466,10 +463,7 @@ namespace vilma
                     mutex_joystick_command_.unlock(); /// Unlock mutex
 
                     //* Update vehicle control mode to Autoware report
-
-                    mutex_vilma_control_mode_.lock();
-                    vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
-                    mutex_vilma_control_mode_.unlock();
+                    vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
 
                     control_timer_->cancel();
 
@@ -498,9 +492,7 @@ namespace vilma
                     mutex_joystick_command_.unlock(); /// Unlock mutex
 
                     //* Update vehicle control mode to Autoware report
-                    mutex_vilma_control_mode_.lock();
-                    vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS;
-                    mutex_vilma_control_mode_.unlock();
+                    vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS);
 
                     control_timer_->reset();
 
@@ -527,9 +519,7 @@ namespace vilma
                     mutex_joystick_command_.unlock(); /// Unlock mutex
 
                     //* Update vehicle control mode to Autoware report
-                    mutex_vilma_control_mode_.lock();
-                    vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY;
-                    mutex_vilma_control_mode_.unlock();
+                    vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY);
 
                     RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS_STEER_ONLY");
 
@@ -554,9 +544,7 @@ namespace vilma
                     mutex_joystick_command_.unlock(); /// Unlock mutex
 
                     //* Update vehicle control mode to Autoware report
-                    mutex_vilma_control_mode_.lock();
-                    vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY;
-                    mutex_vilma_control_mode_.unlock();
+                    vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY);
 
                     control_timer_->reset();
 
@@ -579,7 +567,6 @@ namespace vilma
                 success = false;
             }
         }
-        mutex_change_control_mode_enabled_.unlock();
         
         return success;
     }
