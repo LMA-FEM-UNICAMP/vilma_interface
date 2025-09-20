@@ -567,7 +567,7 @@ namespace vilma
                 success = false;
             }
         }
-        
+
         return success;
     }
 
@@ -693,7 +693,7 @@ namespace vilma
                 //* Computing control action from current speed and speed reference
                 mutex_velocity_controller_.lock();
                 velocity_controller_.calculate(control_action, state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED],
-                                               velocity_controller_.reference, this->get_clock()->now().seconds());
+                                               this->get_clock()->now().seconds());
                 mutex_velocity_controller_.unlock();
             }
 
@@ -743,7 +743,7 @@ namespace vilma
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
         mutex_velocity_controller_.lock();
-        velocity_controller_.reference = msg->longitudinal.velocity;
+        velocity_controller_.setReference(msg->longitudinal.velocity);
         mutex_velocity_controller_.unlock();
 
         //* Assign steer value received in msg, gas value and brake data in joystick command

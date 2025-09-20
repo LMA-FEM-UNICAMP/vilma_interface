@@ -47,11 +47,11 @@ void PIDLMA::reset()
     error_sum_ = 0;
 }
 
-void PIDLMA::calculate(LongActuationCommand &control_action, double value, double reference, double t)
+void PIDLMA::calculate(LongActuationCommand &control_action, double value, double t)
 {
     double dt = t - t_ant_;
 
-    update_velocity_reference_in_ramp(reference, dt);
+    update_velocity_reference_in_ramp(reference_, dt);
 
     double error = velocity_reference_in_ramp_ - value;
 
@@ -100,4 +100,8 @@ void PIDLMA::update_velocity_reference_in_ramp(double velocity_target, double dt
         // Saturate the value if velocity reference transpass velocity target
         velocity_reference_in_ramp_ = (velocity_reference_in_ramp_ < velocity_target) ? velocity_target : velocity_reference_in_ramp_;
     }
+}
+
+void PIDLMA::setReference(double reference){
+    this->reference_ = reference;
 }

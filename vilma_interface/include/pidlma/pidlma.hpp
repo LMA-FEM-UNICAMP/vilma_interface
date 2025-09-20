@@ -43,19 +43,65 @@ class PIDLMA
   double ramp_rate_;
   double velocity_reference_in_ramp_;
   double brake_deadband_;
+  double reference_;
 
 public:
-  double reference;
 
+  /**
+   * @brief Construct a new PIDLMA object
+   * 
+   */
   PIDLMA();
+
+  /**
+   * @brief Construct a new PIDLMA object
+   * 
+   * @param ramp_rate 
+   */
   PIDLMA(double ramp_rate);
 
+  /**
+   * @brief Configure the PID controller if the gains, initialize the time, configure reference integration
+   * rate and the brake deadband for engine braking.
+   * 
+   * @param k_p 
+   * @param k_d 
+   * @param k_i 
+   * @param t 
+   * @param ramp_rate 
+   * @param brake_deadband 
+   */
   void configure(double k_p, double k_d, double k_i, double t, double ramp_rate, double brake_deadband);
 
+  /**
+   * @brief Reset integration buffers in the controller
+   * 
+   */
   void reset();
 
-  void calculate(LongActuationCommand &control_action, double value, double reference, double t);
+  /**
+   * @brief Function that calculate the control action (throttle, braking and braking mode) for the current 
+   * speed value at a time t.
+   * 
+   * @param control_action Returned control action in LongActuationCommand format
+   * @param value Current longitudinal velocity 
+   * @param t Current time in seconds
+   */
+  void calculate(LongActuationCommand &control_action, double value, double t);
 
+  /**
+   * @brief Set the Reference object
+   * 
+   * @param reference 
+   */
+  void setReference(double reference);
+
+  /**
+   * @brief Auxiliary function to integrate the reference in ramp to smooth the control.
+   * 
+   * @param velocity_target 
+   * @param dt 
+   */
   void update_velocity_reference_in_ramp(double velocity_target, double dt);
 };
 
