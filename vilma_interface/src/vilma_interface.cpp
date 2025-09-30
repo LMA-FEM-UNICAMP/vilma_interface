@@ -215,11 +215,19 @@ namespace vilma
         sensors_ma_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
             "/vilma_ma_debug/sensors_ma", rclcpp::QoS{1});
 
+        /* HMI topics */
+
         hmi_throttle_pub_ = this->create_publisher<std_msgs::msg::Float32>(
             "/hmi/throttle", rclcpp::QoS{1});
 
         hmi_braking_pub_ = this->create_publisher<std_msgs::msg::Float32>(
             "/hmi/braking", rclcpp::QoS{1});
+
+        hmi_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>(
+            "/hmi/speed", rclcpp::QoS{1});
+
+        hmi_status_pub_ = this->create_publisher<std_msgs::msg::String>(
+            "/hmi/status", rclcpp::QoS{1});
 
         set_control_mode(vilma_control_mode_);
     }
@@ -370,6 +378,21 @@ namespace vilma
             //* Debug logging
             RCLCPP_DEBUG(this->get_logger(), "MA -> PC | SENSORS_MA mode");
 
+            //* HMI update
+            if (vilma_control_mode_.load() != autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS &&
+                vilma_control_mode_.load() != autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY)
+            {
+                //* Printing throttling and braking in the HMI
+                std_msgs::msg::Float32 throttle_value_hmi;
+                std_msgs::msg::Float32 braking_value_hmi;
+
+                throttle_value_hmi.data = sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE]*100.0;
+                braking_value_hmi.data =  sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE];
+
+                hmi_throttle_pub_->publish(throttle_value_hmi);
+                hmi_braking_pub_->publish(braking_value_hmi);
+            }
+
             break;
         }
 
@@ -414,6 +437,10 @@ namespace vilma
 
             //* Debug logging
             RCLCPP_DEBUG(this->get_logger(), "MA -> PC | STATE_MA mode");
+
+            std_msgs::msg::Float32 speed_value_hmi;
+            speed_value_hmi.data = state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED];
+            hmi_speed_pub_->publish(speed_value_hmi);
 
             break;
         }
@@ -714,8 +741,8 @@ namespace vilma
         std_msgs::msg::Float32 throttle_value_hmi;
         std_msgs::msg::Float32 braking_value_hmi;
 
-        throttle_value_hmi.data = control_action.gas_value;
-        braking_value_hmi.data = control_action.brake_value;
+        throttle_value_hmi.data = control_action.gas_value*100.0;
+        braking_value_hmi.data = control_action.brake_value*100.0;
 
         hmi_throttle_pub_->publish(throttle_value_hmi);
         hmi_braking_pub_->publish(braking_value_hmi);

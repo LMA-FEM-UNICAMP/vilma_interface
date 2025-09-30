@@ -46,6 +46,7 @@
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/header.hpp"
+#include "std_msgs/msg/string.hpp"
 
 /* Autoware includes */
 
@@ -190,8 +191,10 @@ namespace vilma
 
         /* Publishers */
 
-        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_throttle_pub_;    
-        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_braking_pub_;    
+        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_throttle_pub_;
+        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_braking_pub_;
+        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_speed_pub_;
+        rclcpp::Publisher<std_msgs::msg::String>::SharedPtr hmi_status_pub_;
     };
 
 } // namespace vilma
