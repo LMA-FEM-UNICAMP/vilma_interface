@@ -313,9 +313,16 @@ namespace vilma
             std::copy(from_ma_vector_.begin(), from_ma_vector_.end(), sensors_ma_msg_.data.begin() + 1);
             sensors_ma_pub_->publish(sensors_ma_msg_);
 
+            //* Change to manual when start (in Joystick Mode)
+            if (sensors_ma_msg_.data[SensorsMA::OPERATION_STATE] == OperationModeMA::INITIAL_STATE_MODE)
+            {
+                set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
+            }
+
             if (sensors_ma_msg_.data[SensorsMA::TIME_PCC_BRAKE] < 0.0)
             {
                 RCLCPP_FATAL(this->get_logger(), "Connection with brake ECU lost.");
+                break;
             }
 
             //* Verify that the user brake pedal was pressed | Emergency -- User braking
@@ -386,8 +393,8 @@ namespace vilma
                 std_msgs::msg::Float32 throttle_value_hmi;
                 std_msgs::msg::Float32 braking_value_hmi;
 
-                throttle_value_hmi.data = sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE]*100.0;
-                braking_value_hmi.data =  sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE];
+                throttle_value_hmi.data = sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] * 100.0;
+                braking_value_hmi.data = sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE];
 
                 hmi_throttle_pub_->publish(throttle_value_hmi);
                 hmi_braking_pub_->publish(braking_value_hmi);
@@ -741,8 +748,8 @@ namespace vilma
         std_msgs::msg::Float32 throttle_value_hmi;
         std_msgs::msg::Float32 braking_value_hmi;
 
-        throttle_value_hmi.data = control_action.gas_value*100.0;
-        braking_value_hmi.data = control_action.brake_value*100.0;
+        throttle_value_hmi.data = control_action.gas_value * 100.0;
+        braking_value_hmi.data = control_action.brake_value * 100.0;
 
         hmi_throttle_pub_->publish(throttle_value_hmi);
         hmi_braking_pub_->publish(braking_value_hmi);
