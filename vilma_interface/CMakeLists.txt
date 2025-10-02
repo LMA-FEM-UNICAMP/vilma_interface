@@ -32,13 +32,18 @@ ament_target_dependencies(
   "autoware_vehicle_msgs"
 )
 
+install(DIRECTORY 
+  include/
+  DESTINATION include
+)
+
 install(TARGETS vilma_interface_node
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY 
-        config
-        launch
-        DESTINATION share/${PROJECT_NAME})
+  config
+  launch
+  DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -51,5 +56,7 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+ament_export_include_directories(include)
 
 ament_package()
