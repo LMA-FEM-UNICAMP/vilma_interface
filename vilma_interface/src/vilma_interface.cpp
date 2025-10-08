@@ -900,12 +900,15 @@ namespace vilma
      */
     void VilmaInterface::joystick_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg)
     {
-        mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+        if (change_control_mode_enabled_.load()) /// Just accept debug input if control change mode is enabled.
         {
-            //* Assign joystick message received by debug topic to joystick command vector
-            joystick_command_ = msg->data;
+            mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+            {
+                //* Assign joystick message received by debug topic to joystick command vector
+                joystick_command_ = msg->data;
+            }
+            mutex_joystick_command_.unlock(); /// Unlock mutex}
         }
-        mutex_joystick_command_.unlock(); /// Unlock mutex
     }
 
 } // namespace vilma
