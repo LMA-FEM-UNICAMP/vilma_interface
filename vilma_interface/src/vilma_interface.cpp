@@ -64,6 +64,8 @@ namespace vilma
         this->declare_parameter("joystick_command_time_validity_ms", 500);
         this->declare_parameter("communication_timeout_ms", 1000);
         this->declare_parameter("autoware_command_time_validity_ms", 250);
+        this->declare_parameter("debug_mode", false);
+        this->declare_parameter("gas_user_value_set_manual", 0.15);
 
         /* UDP communication parameters */
         int pc_udp_port = this->get_parameter("pc_udp_port").as_int();
@@ -93,6 +95,11 @@ namespace vilma
         max_gas_value_ = this->get_parameter("max_gas_value").as_double();
         max_brake_value_ = this->get_parameter("max_brake_value").as_double();
         max_speed_m_s_ = this->get_parameter("max_speed_km_h").as_double() / 3.6;
+
+        /* Debug */
+        debug_mode_ = this->get_parameter("debug_mode").as_bool();
+        gas_user_value_set_manual_ = this->get_parameter("gas_user_value_set_manual").as_double();
+        
 
         /// Initialization and configuration of attributes
 
@@ -327,7 +334,8 @@ namespace vilma
 
             //* Verify that the user brake pedal was pressed | Emergency -- User braking
             {
-                if (sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_)
+                if (sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_ ||
+                    sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] >= gas_user_value_set_manual_)
                 {
                     //* Change control mode to manual
                     set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);

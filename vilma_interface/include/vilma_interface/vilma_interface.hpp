@@ -107,6 +107,10 @@ namespace vilma
         int autoware_command_time_validity_ms_;
         int communication_timeout_ms_;
 
+        /* Debug */
+        bool debug_mode_;
+        double gas_user_value_set_manual_;
+
         // Methods
 
         unsigned short to_ma();

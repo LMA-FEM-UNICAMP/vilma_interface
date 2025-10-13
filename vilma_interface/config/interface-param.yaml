@@ -56,3 +56,6 @@
         max_gas_value: 1.0
         max_brake_value: 1.0
         max_speed_km_h: 60.0
+
+        # Debug
+        gas_user_value_set_manual: 0.15
