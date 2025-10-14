@@ -127,6 +127,15 @@ public:
     constexpr static int JOYSTICK_MODE = 3;
 };
 
+//* Recieved MA's operation modes definitions
+class RXOperationModeMA
+{
+public:
+    constexpr static int INITIAL_STATE_MODE = 0b10;
+    constexpr static int MANUAL_MODE = 0b100;
+    constexpr static int JOYSTICK_MODE = 0b1000;
+};
+
 //* MA to PC UDP message types definitions
 class TxTypeMA
 {

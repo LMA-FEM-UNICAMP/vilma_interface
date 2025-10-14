@@ -120,6 +120,8 @@ namespace vilma
 
         double get_steering_value(double steering_tire_angle_rad);
 
+        int get_operation_state(int operation_state_value);
+
         /// ROS 2
 
         // Timers

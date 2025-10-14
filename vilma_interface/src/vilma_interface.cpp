@@ -99,8 +99,8 @@ namespace vilma
         /* Debug */
         debug_mode_ = this->get_parameter("debug_mode").as_bool();
         gas_user_value_set_manual_ = this->get_parameter("gas_user_value_set_manual").as_double();
-        
 
+        
         /// Initialization and configuration of attributes
 
         /* Vehicle variables initialization */
@@ -321,7 +321,7 @@ namespace vilma
             sensors_ma_pub_->publish(sensors_ma_msg_);
 
             //* Change to manual when start (in Joystick Mode)
-            if (sensors_ma_msg_.data[SensorsMA::OPERATION_STATE] == OperationModeMA::INITIAL_STATE_MODE)
+            if (get_operation_state(static_cast<int>(sensors_ma_msg_.data[SensorsMA::OPERATION_STATE])) == RXOperationModeMA::INITIAL_STATE_MODE)
             {
                 set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
             }
@@ -465,6 +465,26 @@ namespace vilma
 
             break;
         }
+    }
+
+    // TODO 
+    /**
+     * @brief 
+     * 
+     * @param operation_state_value 
+     * @return int 
+     */
+    int VilmaInterface::get_operation_state(int operation_state_value)
+    {
+        // Value	bit			description
+        // 1	    0			Emergency state
+        // 2	    1			initial state
+        // 4	    2			manual state
+        // 8	    3			Joystick state
+        // 16	    4			Automatic state
+        // 32	    5			ADAS State
+
+        return (operation_state_value & 0b111111);
     }
 
     /**
