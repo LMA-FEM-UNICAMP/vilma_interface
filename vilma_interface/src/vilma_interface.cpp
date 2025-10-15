@@ -100,7 +100,6 @@ namespace vilma
         debug_mode_ = this->get_parameter("debug_mode").as_bool();
         gas_user_value_set_manual_ = this->get_parameter("gas_user_value_set_manual").as_double();
 
-        
         /// Initialization and configuration of attributes
 
         /* Vehicle variables initialization */
@@ -467,12 +466,12 @@ namespace vilma
         }
     }
 
-    // TODO 
+    // TODO
     /**
-     * @brief 
-     * 
-     * @param operation_state_value 
-     * @return int 
+     * @brief
+     *
+     * @param operation_state_value
+     * @return int
      */
     int VilmaInterface::get_operation_state(int operation_state_value)
     {
@@ -527,9 +526,10 @@ namespace vilma
                     //* Update vehicle control mode to Autoware report
                     vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
 
+                    //* Disabling velocity control loop
                     control_timer_->cancel();
 
-                    RCLCPP_INFO(this->get_logger(), "Control Mode changed to MANUAL");
+                    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Control Mode changed to MANUAL");
 
                     break;
 
@@ -556,9 +556,10 @@ namespace vilma
                     //* Update vehicle control mode to Autoware report
                     vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS);
 
+                    //* Enabling velocity control loop
                     control_timer_->reset();
 
-                    RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS");
+                    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Control Mode changed to AUTONOMOUS");
 
                     break;
 
@@ -583,7 +584,10 @@ namespace vilma
                     //* Update vehicle control mode to Autoware report
                     vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY);
 
-                    RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS_STEER_ONLY");
+                    //* Disabling velocity control loop
+                    control_timer_->cancel();
+
+                    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Control Mode changed to AUTONOMOUS_STEER_ONLY");
 
                     break;
 
@@ -608,9 +612,10 @@ namespace vilma
                     //* Update vehicle control mode to Autoware report
                     vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY);
 
+                    //* Enabling velocity control loop
                     control_timer_->reset();
 
-                    RCLCPP_INFO(this->get_logger(), "Control Mode changed to AUTONOMOUS_VELOCITY_ONLY");
+                    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Control Mode changed to AUTONOMOUS_VELOCITY_ONLY");
 
                     break;
 
@@ -701,6 +706,9 @@ namespace vilma
             joystick_command_[0] = (joystick_command_[0] == to_ma_vector_[0]) ? 0.0 : joystick_command_[0];
         }
         mutex_joystick_command_.unlock(); /// Unlock mutex
+
+        RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MA timer loop time: %f s",
+                              this->get_clock()->now().seconds() - stamp.seconds());
     }
 
     /**
