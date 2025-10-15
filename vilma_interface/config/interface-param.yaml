@@ -58,4 +58,4 @@
         max_speed_km_h: 60.0
 
         # Debug
-        gas_user_value_set_manual: 0.15
+        gas_user_value_set_manual: 0.10
