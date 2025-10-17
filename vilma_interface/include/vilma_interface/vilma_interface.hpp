@@ -71,6 +71,21 @@ namespace vilma
     {
 
     public:
+        /**
+         * @brief Alias for control modes in autoware_vehicle_msgs::msg::ControlModeReport::msg::XXX
+         */
+        using AutowareControlMode = autoware_vehicle_msgs::msg::ControlModeReport;
+
+        /**
+         * @brief Alias for gear modes in autoware_vehicle_msgs::msg::GearCommand::msg::XXX
+         */
+        using AutowareGearCommand = autoware_vehicle_msgs::msg::GearCommand;
+
+        /**
+         * @brief Alias for gear modes in autoware_vehicle_msgs::msg::GearReport::msg::XXX
+         */
+        using AutowareGearReport = autoware_vehicle_msgs::msg::GearReport;
+
         VilmaInterface();
         ~VilmaInterface();
 

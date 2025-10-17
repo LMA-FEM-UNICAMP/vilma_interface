@@ -42,7 +42,7 @@
         # kd_vel: 0.002
         brake_deadband: -0.1
         speed_reference_ramp_rate: 3.0
-        brake_user_pressure_set_emergency: 10.0
+        brake_user_pressure_set_emergency: 7.0
         autonomous_shift_enable: false
         control_timer_period_ms: 100
         
@@ -58,4 +58,5 @@
         max_speed_km_h: 60.0
 
         # Debug
-        gas_user_value_set_manual: 0.10
+        debug_mode: true
+        gas_user_value_set_manual: 0.7

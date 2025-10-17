@@ -27,7 +27,6 @@
 
 namespace vilma
 {
-
     /**
      *
      * @brief Class constructor
@@ -104,7 +103,7 @@ namespace vilma
 
         /* Vehicle variables initialization */
         ma_operation_mode_ = OperationModeMA::MANUAL_MODE;
-        vilma_control_mode_ = autoware_vehicle_msgs::msg::ControlModeReport::MANUAL;
+        vilma_control_mode_ = AutowareControlMode::MANUAL;
         change_control_mode_enabled_.store(true);
 
         /* MA messages configuration */
@@ -322,7 +321,7 @@ namespace vilma
             //* Change to manual when start (in Joystick Mode)
             if (get_operation_state(static_cast<int>(sensors_ma_msg_.data[SensorsMA::OPERATION_STATE])) == RXOperationModeMA::INITIAL_STATE_MODE)
             {
-                set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
+                set_control_mode(AutowareControlMode::MANUAL);
             }
 
             if (sensors_ma_msg_.data[SensorsMA::TIME_PCC_BRAKE] < 0.0)
@@ -334,10 +333,10 @@ namespace vilma
             //* Verify that the user brake pedal was pressed | Emergency -- User braking
             {
                 if (sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_ ||
-                    sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] >= gas_user_value_set_manual_)
+                    (sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] >= gas_user_value_set_manual_ && debug_mode_))
                 {
                     //* Change control mode to manual
-                    set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
+                    set_control_mode(AutowareControlMode::MANUAL);
 
                     //* Block control mode changing
                     change_control_mode_enabled_.store(false);
@@ -366,19 +365,19 @@ namespace vilma
                 switch (static_cast<int>(sensors_ma_msg_.data[SensorsMA::GEAR_STATE]))
                 {
                 case SensorsMA::GEAR_OFF:
-                    gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::NONE;
+                    gear_report_msg.report = AutowareGearReport::NONE;
                     break;
 
                 case SensorsMA::GEAR_D:
-                    gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::DRIVE;
+                    gear_report_msg.report = AutowareGearReport::DRIVE;
                     break;
 
                 case SensorsMA::GEAR_R:
-                    gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::REVERSE;
+                    gear_report_msg.report = AutowareGearReport::REVERSE;
                     break;
 
                 case SensorsMA::GEAR_N:
-                    gear_report_msg.report = autoware_vehicle_msgs::msg::GearReport::NEUTRAL;
+                    gear_report_msg.report = AutowareGearReport::NEUTRAL;
                     break;
 
                 default:
@@ -393,8 +392,8 @@ namespace vilma
             RCLCPP_DEBUG(this->get_logger(), "MA -> PC | SENSORS_MA mode");
 
             //* HMI update
-            if (vilma_control_mode_.load() != autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS &&
-                vilma_control_mode_.load() != autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY)
+            if (vilma_control_mode_.load() != AutowareControlMode::AUTONOMOUS &&
+                vilma_control_mode_.load() != AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY)
             {
                 //* Printing throttling and braking in the HMI
                 std_msgs::msg::Float32 throttle_value_hmi;
@@ -505,7 +504,7 @@ namespace vilma
                 switch (control_mode)
                 {
                 //* Manual mode
-                case autoware_vehicle_msgs::msg::ControlModeReport::MANUAL:
+                case AutowareControlMode::MANUAL:
 
                     mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
                     {
@@ -520,11 +519,14 @@ namespace vilma
 
                         //* Set gear command in manual mode
                         joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_OFF;
+
+                        //* Set brake command in manual mode
+                        joystick_command_[JoystickMA::BRAKE_COMMAND] = JoystickMA::BRAKE_COMMAND_OFF;
                     }
                     mutex_joystick_command_.unlock(); /// Unlock mutex
 
                     //* Update vehicle control mode to Autoware report
-                    vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
+                    vilma_control_mode_.store(AutowareControlMode::MANUAL);
 
                     //* Disabling velocity control loop
                     control_timer_->cancel();
@@ -534,7 +536,7 @@ namespace vilma
                     break;
 
                 //* Fully autonomous mode
-                case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS:
+                case AutowareControlMode::AUTONOMOUS:
 
                     mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
                     {
@@ -548,13 +550,14 @@ namespace vilma
 
                         //* Set steer command in position mode [-1.0, 1.0]
                         joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
+
                         //* Avoid send old steer value
                         joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
                     }
                     mutex_joystick_command_.unlock(); /// Unlock mutex
 
                     //* Update vehicle control mode to Autoware report
-                    vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS);
+                    vilma_control_mode_.store(AutowareControlMode::AUTONOMOUS);
 
                     //* Enabling velocity control loop
                     control_timer_->reset();
@@ -564,7 +567,7 @@ namespace vilma
                     break;
 
                 //* Autonomous steering mode
-                case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY:
+                case AutowareControlMode::AUTONOMOUS_STEER_ONLY:
 
                     mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
                     {
@@ -576,13 +579,14 @@ namespace vilma
 
                         //* Set steer command in position mode [-1.0, 1.0]
                         joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
+
                         //* Avoid send old steer value
                         joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
                     }
                     mutex_joystick_command_.unlock(); /// Unlock mutex
 
                     //* Update vehicle control mode to Autoware report
-                    vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_STEER_ONLY);
+                    vilma_control_mode_.store(AutowareControlMode::AUTONOMOUS_STEER_ONLY);
 
                     //* Disabling velocity control loop
                     control_timer_->cancel();
@@ -592,7 +596,7 @@ namespace vilma
                     break;
 
                 //* Autonomous velocity mode
-                case autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY:
+                case AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY:
 
                     mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
                     {
@@ -610,7 +614,7 @@ namespace vilma
                     mutex_joystick_command_.unlock(); /// Unlock mutex
 
                     //* Update vehicle control mode to Autoware report
-                    vilma_control_mode_.store(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS_VELOCITY_ONLY);
+                    vilma_control_mode_.store(AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY);
 
                     //* Enabling velocity control loop
                     control_timer_->reset();
@@ -842,7 +846,7 @@ namespace vilma
             //* Select new gear from Autoware command
             switch (msg->command)
             {
-            case autoware_vehicle_msgs::msg::GearCommand::NEUTRAL:
+            case AutowareGearCommand::NEUTRAL:
 
                 mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
                 {
@@ -856,7 +860,7 @@ namespace vilma
 
                 break;
 
-            case autoware_vehicle_msgs::msg::GearCommand::REVERSE:
+            case AutowareGearCommand::REVERSE:
 
                 mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
                 {
@@ -870,7 +874,7 @@ namespace vilma
 
                 break;
 
-            case autoware_vehicle_msgs::msg::GearCommand::DRIVE:
+            case AutowareGearCommand::DRIVE:
 
                 mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
                 {
@@ -903,12 +907,12 @@ namespace vilma
         if (msg->engage) /// Engage Autoware (fully autonomous mode)
         {
             //* Request change control mode to AUTONOMOUS
-            set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS);
+            set_control_mode(AutowareControlMode::AUTONOMOUS);
         }
         else /// Disengage Autoware (manual mode)
         {
             //* Request change control mode to MANUAL
-            set_control_mode(autoware_vehicle_msgs::msg::ControlModeReport::MANUAL);
+            set_control_mode(AutowareControlMode::MANUAL);
         }
     }
 
