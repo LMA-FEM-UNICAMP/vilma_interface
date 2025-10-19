@@ -559,6 +559,11 @@ namespace vilma
                     //* Update vehicle control mode to Autoware report
                     vilma_control_mode_.store(AutowareControlMode::AUTONOMOUS);
 
+                    //* Reseting controller
+                    mutex_velocity_controller_.lock();
+                    velocity_controller_.reset(this->get_clock()->now().seconds());
+                    mutex_velocity_controller_.unlock();
+
                     //* Enabling velocity control loop
                     control_timer_->reset();
 
@@ -615,6 +620,11 @@ namespace vilma
 
                     //* Update vehicle control mode to Autoware report
                     vilma_control_mode_.store(AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY);
+
+                    //* Reseting controller
+                    mutex_velocity_controller_.lock();
+                    velocity_controller_.reset(this->get_clock()->now().seconds());
+                    mutex_velocity_controller_.unlock();
 
                     //* Enabling velocity control loop
                     control_timer_->reset();

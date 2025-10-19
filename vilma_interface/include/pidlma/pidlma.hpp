@@ -74,10 +74,11 @@ public:
   void configure(double k_p, double k_d, double k_i, double t, double ramp_rate, double brake_deadband);
 
   /**
-   * @brief Reset integration buffers in the controller
+   * @brief Reset integration buffers in the controller and time
    * 
+   * @param t 
    */
-  void reset();
+  void reset(double t);
 
   /**
    * @brief Function that calculate the control action (throttle, braking and braking mode) for the current 

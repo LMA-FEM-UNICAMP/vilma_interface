@@ -41,8 +41,9 @@ void PIDLMA::configure(double k_p, double k_d, double k_i, double t, double ramp
     brake_deadband_ = brake_deadband;
 }
 
-void PIDLMA::reset()
+void PIDLMA::reset(double t)
 {
+    t_ant_ = t;
     error_ant_ = 0;
     error_sum_ = 0;
 }
