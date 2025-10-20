@@ -59,4 +59,4 @@
 
         # Debug
         debug_mode: true
-        gas_user_value_set_manual: 0.7
+        gas_user_value_set_manual: 0.10

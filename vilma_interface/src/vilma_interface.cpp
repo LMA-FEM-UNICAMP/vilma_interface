@@ -65,7 +65,7 @@ namespace vilma
         this->declare_parameter("communication_timeout_ms", 1000);
         this->declare_parameter("autoware_command_time_validity_ms", 250);
         this->declare_parameter("debug_mode", false);
-        this->declare_parameter("gas_user_value_set_manual", 0.15);
+        this->declare_parameter("gas_user_value_set_manual", 0.10);
 
         /* UDP communication parameters */
         int pc_udp_port = this->get_parameter("pc_udp_port").as_int();
