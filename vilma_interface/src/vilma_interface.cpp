@@ -53,6 +53,7 @@ namespace vilma
         this->declare_parameter("kp_vel", 0.0015);
         this->declare_parameter("ki_vel", 0.0);
         this->declare_parameter("kd_vel", 0.0);
+        this->declare_parameter("int_max", 10.0);
         this->declare_parameter("brake_deadband", -0.1);
         this->declare_parameter("max_steering_tire_angle_rad", 25.27 * M_PI / 180.0);
         this->declare_parameter("max_gas_value", 1.0);
@@ -78,6 +79,7 @@ namespace vilma
         double kp_vel = this->get_parameter("kp_vel").as_double();
         double ki_vel = this->get_parameter("ki_vel").as_double();
         double kd_vel = this->get_parameter("kd_vel").as_double();
+        double int_max = this->get_parameter("int_max").as_double();
         brake_deadband_ = this->get_parameter("brake_deadband").as_double();
         speed_reference_ramp_rate_ = this->get_parameter("speed_reference_ramp_rate").as_double();
         brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
@@ -139,7 +141,7 @@ namespace vilma
 
         //* Configure velocity controller
         mutex_velocity_controller_.lock();
-        velocity_controller_.configure(kp_vel, kd_vel, ki_vel, this->get_clock()->now().seconds(),
+        velocity_controller_.configure(kp_vel, kd_vel, ki_vel, int_max, this->get_clock()->now().seconds(),
                                        speed_reference_ramp_rate_, brake_deadband_);
         mutex_velocity_controller_.unlock();
 
@@ -399,8 +401,8 @@ namespace vilma
                 std_msgs::msg::Float32 throttle_value_hmi;
                 std_msgs::msg::Float32 braking_value_hmi;
 
-                throttle_value_hmi.data = sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] * 100.0;
-                braking_value_hmi.data = sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE];
+                throttle_value_hmi.data = sensors_ma_msg_.data[SensorsMA::GAS_VALUE] * 100.0;
+                braking_value_hmi.data = sensors_ma_msg_.data[SensorsMA::BRAKE_VALUE] * 100.0;
 
                 hmi_throttle_pub_->publish(throttle_value_hmi);
                 hmi_braking_pub_->publish(braking_value_hmi);
@@ -827,7 +829,7 @@ namespace vilma
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
         mutex_velocity_controller_.lock();
-        velocity_controller_.setReference(msg->longitudinal.velocity*3.6); // ! DEBUG
+        velocity_controller_.setReference(msg->longitudinal.velocity/3.6); // ! DEBUG
         mutex_velocity_controller_.unlock();
 
         //* Assign steer value received in msg, gas value and brake data in joystick command

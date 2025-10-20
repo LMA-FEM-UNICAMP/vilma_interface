@@ -44,6 +44,9 @@ class PIDLMA
   double velocity_reference_in_ramp_;
   double brake_deadband_;
   double reference_;
+  double output_max_;
+  double output_min_;
+  double int_max_;
 
 public:
 
@@ -71,7 +74,7 @@ public:
    * @param ramp_rate 
    * @param brake_deadband 
    */
-  void configure(double k_p, double k_d, double k_i, double t, double ramp_rate, double brake_deadband);
+  void configure(double k_p, double k_d, double k_i, double int_max, double t, double ramp_rate, double brake_deadband);
 
   /**
    * @brief Reset integration buffers in the controller and time

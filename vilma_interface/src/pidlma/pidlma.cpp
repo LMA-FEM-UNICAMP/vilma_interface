@@ -24,10 +24,10 @@
 
 PIDLMA::PIDLMA()
 {
-    configure(0.0, 0.0, 0.0, 0.0, 3.0, -0.1);
+    configure(0.0, 0.0, 0.0, 10.0, 0.0, 3.0, -0.1);
 }
 
-void PIDLMA::configure(double k_p, double k_d, double k_i, double t, double ramp_rate, double brake_deadband)
+void PIDLMA::configure(double k_p, double k_d, double k_i, double int_max, double t, double ramp_rate, double brake_deadband)
 {
     kp_ = k_p;
     kd_ = k_d;
@@ -39,6 +39,9 @@ void PIDLMA::configure(double k_p, double k_d, double k_i, double t, double ramp
     velocity_reference_in_ramp_ = 0;
     ramp_rate_ = ramp_rate;
     brake_deadband_ = brake_deadband;
+    output_max_ = 0.3;
+    output_min_ = 0.0;
+    int_max_ = int_max;
 }
 
 void PIDLMA::reset(double t)
@@ -46,6 +49,7 @@ void PIDLMA::reset(double t)
     t_ant_ = t;
     error_ant_ = 0;
     error_sum_ = 0;
+    velocity_reference_in_ramp_ = 0;
 }
 
 void PIDLMA::calculate(LongActuationCommand &control_action, double value, double t)
@@ -56,11 +60,11 @@ void PIDLMA::calculate(LongActuationCommand &control_action, double value, doubl
 
     double error = velocity_reference_in_ramp_ - value;
 
-    error_sum_ += (u_ >= 1.0 || u_ <= -1.0) ? 0 : error * dt;
+    error_sum_ += (u_ >= output_max_ || u_ <= output_min_ || error_sum_ >= int_max_ || error_sum_ <= -int_max_) ? 0 : error * dt;
 
     u_ = error * kp_ + kd_ * (error - error_ant_) / dt + ki_ * error_sum_;
 
-    u_ = (u_ > 1.0) ? 1.0 : ((u_ < -1.0) ? -1.0 : u_);
+    u_ = (u_ > output_max_) ? output_max_ : ((u_ < output_min_) ? output_min_: u_);
 
     error_ant_ = error;
 
@@ -76,7 +80,7 @@ void PIDLMA::calculate(LongActuationCommand &control_action, double value, doubl
     else if (u_ >= 0) /// Accelerating
     {
         //* Assign control action as gas pedal position [0.0, 1.0]
-        control_action.gas_value = u_;
+        control_action.gas_value = u_ + 0.07;
     }            
     /// Else: engine braking
 }
