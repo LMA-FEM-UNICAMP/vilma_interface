@@ -827,7 +827,7 @@ namespace vilma
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
         mutex_velocity_controller_.lock();
-        velocity_controller_.setReference(msg->longitudinal.velocity);
+        velocity_controller_.setReference(msg->longitudinal.velocity*3.6); // ! DEBUG
         mutex_velocity_controller_.unlock();
 
         //* Assign steer value received in msg, gas value and brake data in joystick command
