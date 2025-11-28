@@ -776,7 +776,7 @@ namespace vilma
 
 #if CONTROLLER == PID
         //* Debug data from the PID controller
-        PIDLMADebug control_debug;
+        PIDLMADebug control_debug; // TODO Must turn to a ros2 message to plot and record.
 #endif
 
         //* Creating brake command variable initialized in manual braking
