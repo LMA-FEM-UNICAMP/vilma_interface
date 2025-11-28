@@ -33,13 +33,13 @@
 
         # Controller
         kp_vel: 0.05
-        ki_vel: 0.0001
+        ki_vel: 0.00008
         kd_vel: 0.000
-        int_max: 0.2
+        int_max: 2500.0
         
-        brake_deadband: -1.0
+        brake_deadband: -0.1
         speed_reference_ramp_rate: 1.0
-        brake_user_pressure_set_emergency: 10.0
+        brake_user_pressure_set_emergency: 20.0
         autonomous_shift_enable: false
         control_timer_period_ms: 100
         
@@ -56,4 +56,4 @@
 
         # Debug
         debug_mode: true
-        gas_user_value_set_manual: 0.15
+        gas_user_value_set_manual: 0.20

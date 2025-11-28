@@ -22,6 +22,8 @@
 
 #include "pidlma/pidlma.hpp"
 
+#include <iostream>
+
 PIDLMA::PIDLMA()
 {
     configure(0.0, 0.0, 0.0, 10.0, 0.0, 3.0, -0.1);
@@ -40,7 +42,7 @@ void PIDLMA::configure(double k_p, double k_d, double k_i, double int_max, doubl
     ramp_rate_ = ramp_rate;
     brake_deadband_ = brake_deadband;
     output_max_ = 0.3;
-    output_min_ = 0.0;
+    output_min_ = -0.5;
     int_max_ = int_max;
 }
 
@@ -60,9 +62,13 @@ void PIDLMA::calculate(LongActuationCommand &control_action, double value, doubl
 
     double error = velocity_reference_in_ramp_ - value;
 
-    error_sum_ += (u_ >= output_max_ || u_ <= output_min_ || error_sum_ >= int_max_ || error_sum_ <= -int_max_) ? 0 : error * dt;
+    error_sum_ += ((u_ >= output_max_ && error > 0) || (u_ <= output_min_ && error < 0) || (error_sum_ >= int_max_ && error > 0) || (error_sum_ <= -int_max_ && error < 0)) ? 0 : error * dt;
 
     u_ = error * kp_ + kd_ * (error - error_ant_) / dt + ki_ * error_sum_;
+
+    std::cout << "***u = " << u_ << std::endl;
+    std::cout << "***p = " << error * kp_  << std::endl;
+    std::cout << "***i = " << ki_ * error_sum_ << std::endl;
 
     u_ = (u_ > output_max_) ? output_max_ : ((u_ < output_min_) ? output_min_: u_);
 

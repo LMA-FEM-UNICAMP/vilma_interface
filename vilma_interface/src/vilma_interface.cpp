@@ -454,7 +454,7 @@ namespace vilma
             RCLCPP_DEBUG(this->get_logger(), "MA -> PC | STATE_MA mode");
 
             std_msgs::msg::Float32 speed_value_hmi;
-            speed_value_hmi.data = state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED];
+            speed_value_hmi.data = state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED]*3.6;
             hmi_speed_pub_->publish(speed_value_hmi);
 
             break;
