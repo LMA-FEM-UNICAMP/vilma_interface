@@ -33,6 +33,20 @@ struct LongActuationCommand
   double gas_value = 0.0;
 };
 
+struct PIDLMADebug
+{
+  double dt;
+  double u;
+  double braking;
+  double throttle;
+  double v_ref;
+  double v_ramp;
+  double P;
+  double I;
+  double D;
+};
+
+
 class PIDLMA
 {
   double kp_, kd_, ki_;
@@ -91,7 +105,7 @@ public:
    * @param value Current longitudinal velocity 
    * @param t Current time in seconds
    */
-  void calculate(LongActuationCommand &control_action, double value, double t);
+  void calculate(LongActuationCommand &control_action, double value, double t, PIDLMADebug &debug);
 
   /**
    * @brief Set the Reference object

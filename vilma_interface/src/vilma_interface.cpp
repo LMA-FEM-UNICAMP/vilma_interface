@@ -141,8 +141,10 @@ namespace vilma
 
         //* Configure velocity controller
         mutex_velocity_controller_.lock();
+#if CONTROLLER == PID
         velocity_controller_.configure(kp_vel, kd_vel, ki_vel, int_max, this->get_clock()->now().seconds(),
                                        speed_reference_ramp_rate_, brake_deadband_);
+#endif
         mutex_velocity_controller_.unlock();
 
         /// ROS2 entities
@@ -454,7 +456,7 @@ namespace vilma
             RCLCPP_DEBUG(this->get_logger(), "MA -> PC | STATE_MA mode");
 
             std_msgs::msg::Float32 speed_value_hmi;
-            speed_value_hmi.data = state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED]*3.6;
+            speed_value_hmi.data = state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED] * 3.6;
             hmi_speed_pub_->publish(speed_value_hmi);
 
             break;
@@ -563,7 +565,9 @@ namespace vilma
 
                     //* Reseting controller
                     mutex_velocity_controller_.lock();
+#if CONTROLLER == PID
                     velocity_controller_.reset(this->get_clock()->now().seconds());
+#endif
                     mutex_velocity_controller_.unlock();
 
                     //* Enabling velocity control loop
@@ -625,7 +629,9 @@ namespace vilma
 
                     //* Reseting controller
                     mutex_velocity_controller_.lock();
+#if CONTROLLER == PID
                     velocity_controller_.reset(this->get_clock()->now().seconds());
+#endif
                     mutex_velocity_controller_.unlock();
 
                     //* Enabling velocity control loop
@@ -768,6 +774,11 @@ namespace vilma
         //* Creating gas and brake value variables
         LongActuationCommand control_action;
 
+#if CONTROLLER == PID
+        //* Debug data from the PID controller
+        PIDLMADebug control_debug;
+#endif
+
         //* Creating brake command variable initialized in manual braking
         /// By-Wire Braking is only enabled when autonomous braking is needed
         control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
@@ -778,8 +789,10 @@ namespace vilma
             {
                 //* Computing control action from current speed and speed reference
                 mutex_velocity_controller_.lock();
+#if CONTROLLER == PID
                 velocity_controller_.calculate(control_action, state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED],
-                                               this->get_clock()->now().seconds());
+                                               this->get_clock()->now().seconds(), control_debug);
+#endif
                 mutex_velocity_controller_.unlock();
             }
 
@@ -829,7 +842,9 @@ namespace vilma
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
         mutex_velocity_controller_.lock();
-        velocity_controller_.setReference(msg->longitudinal.velocity/3.6); // ! DEBUG
+#if CONTROLLER == PID
+        velocity_controller_.setReference(msg->longitudinal.velocity / 3.6); // ! DEBUG
+#endif
         mutex_velocity_controller_.unlock();
 
         //* Assign steer value received in msg, gas value and brake data in joystick command

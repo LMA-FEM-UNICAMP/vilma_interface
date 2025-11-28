@@ -65,6 +65,11 @@
 #include "pidlma/pidlma.hpp"
 #include "maudp/maudp.h"
 
+#define PID 1
+#define INVERSE_DYNAMIC 2
+
+#define CONTROLLER PID
+
 namespace vilma
 {
     class VilmaInterface : public rclcpp::Node

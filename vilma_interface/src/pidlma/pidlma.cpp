@@ -54,7 +54,7 @@ void PIDLMA::reset(double t)
     velocity_reference_in_ramp_ = 0;
 }
 
-void PIDLMA::calculate(LongActuationCommand &control_action, double value, double t)
+void PIDLMA::calculate(LongActuationCommand &control_action, double value, double t, PIDLMADebug &debug)
 {
     double dt = t - t_ant_;
 
@@ -66,11 +66,7 @@ void PIDLMA::calculate(LongActuationCommand &control_action, double value, doubl
 
     u_ = error * kp_ + kd_ * (error - error_ant_) / dt + ki_ * error_sum_;
 
-    std::cout << "***u = " << u_ << std::endl;
-    std::cout << "***p = " << error * kp_  << std::endl;
-    std::cout << "***i = " << ki_ * error_sum_ << std::endl;
-
-    u_ = (u_ > output_max_) ? output_max_ : ((u_ < output_min_) ? output_min_: u_);
+    u_ = (u_ > output_max_) ? output_max_ : ((u_ < output_min_) ? output_min_ : u_);
 
     error_ant_ = error;
 
@@ -87,8 +83,19 @@ void PIDLMA::calculate(LongActuationCommand &control_action, double value, doubl
     {
         //* Assign control action as gas pedal position [0.0, 1.0]
         control_action.gas_value = u_ + 0.07;
-    }            
+    }
     /// Else: engine braking
+
+    /// Debugging
+    debug.u = u_;
+    debug.P = error * kp_;
+    debug.I = ki_ * error_sum_;
+    debug.D = kd_ * (error - error_ant_) / dt;
+    debug.dt = dt;
+    debug.v_ref = reference_;
+    debug.v_ramp = velocity_reference_in_ramp_;
+    debug.braking = control_action.brake_value;
+    debug.throttle = control_action.gas_value;
 }
 
 void PIDLMA::update_velocity_reference_in_ramp(double velocity_target, double dt)
@@ -113,6 +120,7 @@ void PIDLMA::update_velocity_reference_in_ramp(double velocity_target, double dt
     }
 }
 
-void PIDLMA::setReference(double reference){
+void PIDLMA::setReference(double reference)
+{
     this->reference_ = reference;
 }
