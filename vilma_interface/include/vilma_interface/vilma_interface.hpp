@@ -113,12 +113,10 @@ namespace vilma
         std::atomic<uint8_t> vilma_control_mode_;
         std::atomic<bool> change_control_mode_enabled_;
         PIDLMA velocity_controller_;
-        double brake_deadband_;
         double max_steering_tire_angle_rad_;
         double max_gas_value_;
         double max_brake_value_;
         double max_speed_m_s_;
-        double speed_reference_ramp_rate_;
         double brake_user_pressure_set_emergency_;
         bool autonomous_shift_enable_;
 
