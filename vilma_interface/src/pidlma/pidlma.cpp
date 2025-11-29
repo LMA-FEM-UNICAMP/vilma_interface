@@ -29,21 +29,21 @@ PIDLMA::PIDLMA()
     configure(0.0, 0.0, 0.0, 10.0, 0.0, 3.0, -0.1);
 }
 
-void PIDLMA::configure(double k_p, double k_d, double k_i, double int_max, double t, double ramp_rate, double brake_deadband)
+void PIDLMA::configure(const PIDLMA_config_t & control_configuration)
 {
-    kp_ = k_p;
-    kd_ = k_d;
-    ki_ = k_i;
+    kp_ = control_configuration.k_p;
+    kd_ = control_configuration.k_d;
+    ki_ = control_configuration.k_i;
+    int_max_ = control_configuration.int_max;
+    ramp_rate_ = control_configuration.ramp_rate;
+    brake_deadband_ = control_configuration.brake_deadband;
+    output_max_ = control_configuration.output_max;
+    output_min_ = control_configuration.output_min;
+    t_ant_ = control_configuration.t;
     error_ant_ = 0;
     error_sum_ = 0;
     u_ = 0;
-    t_ant_ = t;
     velocity_reference_in_ramp_ = 0;
-    ramp_rate_ = ramp_rate;
-    brake_deadband_ = brake_deadband;
-    output_max_ = 0.3;
-    output_min_ = -0.5;
-    int_max_ = int_max;
 }
 
 void PIDLMA::reset(double t)
@@ -89,6 +89,18 @@ void PIDLMA::calculate(LongActuationCommand &control_action, double value, doubl
         control_action.gas_value = u_ + 0.07;
     }            
     /// Else: engine braking
+
+    /// Special case: Keep vehicle stopped
+    if(reference_ == 0.0 && value <= 0.1){
+        //* Assign Full brake
+        control_action.brake_value = 1.0;
+
+        //* Setting brake mode in autonomous
+        control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
+
+        //* Double check that the control is not throttling
+        control_action.gas_value = 0.0;
+    }
 }
 
 void PIDLMA::update_velocity_reference_in_ramp(double velocity_target, double dt)
@@ -115,4 +127,8 @@ void PIDLMA::update_velocity_reference_in_ramp(double velocity_target, double dt
 
 void PIDLMA::setReference(double reference){
     this->reference_ = reference;
+
+    if(reference == 0.0){
+        velocity_reference_in_ramp_ = 0.0;
+    }
 }

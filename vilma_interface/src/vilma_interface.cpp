@@ -54,6 +54,8 @@ namespace vilma
         this->declare_parameter("ki_vel", 0.0);
         this->declare_parameter("kd_vel", 0.0);
         this->declare_parameter("int_max", 10.0);
+        this->declare_parameter("output_min", -0.5); // Max braking [0.0, -1.0] --- [min, max]
+        this->declare_parameter("output_max", 0.3); // Max throttle [0.0, 1.0] --- [min, max]
         this->declare_parameter("brake_deadband", -0.1);
         this->declare_parameter("max_steering_tire_angle_rad", 25.27 * M_PI / 180.0);
         this->declare_parameter("max_gas_value", 1.0);
@@ -76,12 +78,15 @@ namespace vilma
         ma_sleep_period_min_ = this->get_parameter("ma_sleep_period_min").as_int();
 
         /* Longitudinal velocity controller parameters */
-        double kp_vel = this->get_parameter("kp_vel").as_double();
-        double ki_vel = this->get_parameter("ki_vel").as_double();
-        double kd_vel = this->get_parameter("kd_vel").as_double();
-        double int_max = this->get_parameter("int_max").as_double();
-        brake_deadband_ = this->get_parameter("brake_deadband").as_double();
-        speed_reference_ramp_rate_ = this->get_parameter("speed_reference_ramp_rate").as_double();
+        PIDLMA_config_t control_configuration;
+        control_configuration.k_p = this->get_parameter("kp_vel").as_double();
+        control_configuration.k_i = this->get_parameter("ki_vel").as_double();
+        control_configuration.k_d = this->get_parameter("kd_vel").as_double();
+        control_configuration.int_max = this->get_parameter("int_max").as_double();
+        control_configuration.output_min = this->get_parameter("output_min").as_double();
+        control_configuration.output_max = this->get_parameter("output_max").as_double();
+        control_configuration.ramp_rate = this->get_parameter("speed_reference_ramp_rate").as_double();
+        control_configuration.brake_deadband = this->get_parameter("brake_deadband").as_double();
         brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
         autonomous_shift_enable_ = this->get_parameter("autonomous_shift_enable").as_bool();
         control_timer_period_ms_ = this->get_parameter("control_timer_period_ms").as_int();
@@ -140,9 +145,9 @@ namespace vilma
         }
 
         //* Configure velocity controller
+        control_configuration.t = this->get_clock()->now().seconds();
         mutex_velocity_controller_.lock();
-        velocity_controller_.configure(kp_vel, kd_vel, ki_vel, int_max, this->get_clock()->now().seconds(),
-                                       speed_reference_ramp_rate_, brake_deadband_);
+        velocity_controller_.configure(control_configuration);
         mutex_velocity_controller_.unlock();
 
         /// ROS2 entities
@@ -454,7 +459,7 @@ namespace vilma
             RCLCPP_DEBUG(this->get_logger(), "MA -> PC | STATE_MA mode");
 
             std_msgs::msg::Float32 speed_value_hmi;
-            speed_value_hmi.data = state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED]*3.6;
+            speed_value_hmi.data = state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED];
             hmi_speed_pub_->publish(speed_value_hmi);
 
             break;
@@ -829,7 +834,7 @@ namespace vilma
     void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
     {
         mutex_velocity_controller_.lock();
-        velocity_controller_.setReference(msg->longitudinal.velocity/3.6); // ! DEBUG
+        velocity_controller_.setReference(msg->longitudinal.velocity);
         mutex_velocity_controller_.unlock();
 
         //* Assign steer value received in msg, gas value and brake data in joystick command

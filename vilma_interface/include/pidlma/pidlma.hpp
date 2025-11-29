@@ -26,6 +26,18 @@
 
 #include "vilma_interface/vilma_ma_labeling.hpp"
 
+typedef struct{
+  double k_p;
+  double k_d;
+  double k_i;
+  double int_max;
+  double t;
+  double ramp_rate;
+  double brake_deadband;
+  double output_min;
+  double output_max;
+} PIDLMA_config_t;
+
 struct LongActuationCommand
 {
   double brake_command = 0.0;
@@ -57,13 +69,6 @@ public:
   PIDLMA();
 
   /**
-   * @brief Construct a new PIDLMA object
-   * 
-   * @param ramp_rate 
-   */
-  PIDLMA(double ramp_rate);
-
-  /**
    * @brief Configure the PID controller if the gains, initialize the time, configure reference integration
    * rate and the brake deadband for engine braking.
    * 
@@ -73,8 +78,10 @@ public:
    * @param t 
    * @param ramp_rate 
    * @param brake_deadband 
+   * @param output_min 
+   * @param output_max 
    */
-  void configure(double k_p, double k_d, double k_i, double int_max, double t, double ramp_rate, double brake_deadband);
+  void configure(const PIDLMA_config_t &);
 
   /**
    * @brief Reset integration buffers in the controller and time

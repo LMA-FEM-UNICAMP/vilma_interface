@@ -34,8 +34,10 @@
         # Controller
         kp_vel: 0.05
         ki_vel: 0.00008
-        kd_vel: 0.000
+        kd_vel: 0.0
         int_max: 2500.0
+        output_min: -0.5
+        output_max: 0.3
         
         brake_deadband: -0.1
         speed_reference_ramp_rate: 1.0
