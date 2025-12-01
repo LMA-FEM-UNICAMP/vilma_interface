@@ -86,7 +86,7 @@ void PIDLMA::calculate(LongActuationCommand &control_action, double value, doubl
     else if (u_ >= 0) /// Accelerating
     {
         //* Assign control action as gas pedal position [0.0, 1.0]
-        control_action.gas_value = u_ + 0.07;
+        control_action.gas_value = u_; // + 0.07;
     }            
     /// Else: engine braking
 

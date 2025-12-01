@@ -331,9 +331,13 @@ namespace vilma
                 set_control_mode(AutowareControlMode::MANUAL);
             }
 
-            if (sensors_ma_msg_.data[SensorsMA::TIME_PCC_BRAKE] < 0.0)
+            if (sensors_ma_msg_.data[SensorsMA::TIME_PCC_BRAKE] == -1.0)
             {
+                //* Change control mode to manual
+                set_control_mode(AutowareControlMode::MANUAL);
+                
                 RCLCPP_FATAL(this->get_logger(), "Connection with brake ECU lost.");
+
                 break;
             }
 
