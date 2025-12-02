@@ -26,7 +26,7 @@
 
 PIDLMA::PIDLMA()
 {
-    configure(0.0, 0.0, 0.0, 10.0, 0.0, 3.0, -0.1);
+    // configure(0.0, 0.0, 0.0, 10.0, 0.0, 3.0, -0.1);
 }
 
 void PIDLMA::configure(const PIDLMA_config_t & control_configuration)
