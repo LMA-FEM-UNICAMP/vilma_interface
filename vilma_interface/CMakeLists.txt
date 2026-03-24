@@ -17,6 +17,7 @@ ament_auto_add_executable(vilma_interface_node
   src/vilma_interface.cpp
   src/maudp/protocoloc.cpp
   src/pidlma/pidlma.cpp
+  src/temp_condition_filter/temp_condition_filter.cpp
 )
 
 

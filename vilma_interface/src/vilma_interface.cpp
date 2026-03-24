@@ -55,7 +55,7 @@ namespace vilma
         this->declare_parameter("kd_vel", 0.0);
         this->declare_parameter("int_max", 10.0);
         this->declare_parameter("output_min", -0.5); // Max braking [0.0, -1.0] --- [min, max]
-        this->declare_parameter("output_max", 0.3); // Max throttle [0.0, 1.0] --- [min, max]
+        this->declare_parameter("output_max", 0.3);  // Max throttle [0.0, 1.0] --- [min, max]
         this->declare_parameter("brake_deadband", -0.1);
         this->declare_parameter("max_steering_tire_angle_rad", 25.27 * M_PI / 180.0);
         this->declare_parameter("max_gas_value", 1.0);
@@ -68,6 +68,7 @@ namespace vilma
         this->declare_parameter("autoware_command_time_validity_ms", 250);
         this->declare_parameter("debug_mode", false);
         this->declare_parameter("gas_user_value_set_manual", 0.10);
+        this->declare_parameter("delay_to_user_command_ms", 250);
 
         /* UDP communication parameters */
         int pc_udp_port = this->get_parameter("pc_udp_port").as_int();
@@ -90,6 +91,7 @@ namespace vilma
         brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
         autonomous_shift_enable_ = this->get_parameter("autonomous_shift_enable").as_bool();
         control_timer_period_ms_ = this->get_parameter("control_timer_period_ms").as_int();
+        delay_to_user_command_ms_ = this->get_parameter("delay_to_user_command_ms").as_int();
 
         /* Command time validity */
         autoware_command_time_validity_ms_ = this->get_parameter("autoware_command_time_validity_ms").as_int();
@@ -149,6 +151,8 @@ namespace vilma
         mutex_velocity_controller_.lock();
         velocity_controller_.configure(control_configuration);
         mutex_velocity_controller_.unlock();
+
+        user_command_handler_ = TempConditionFilter(delay_to_user_command_ms_);
 
         /// ROS2 entities
 
@@ -335,7 +339,7 @@ namespace vilma
             {
                 //* Change control mode to manual
                 set_control_mode(AutowareControlMode::MANUAL);
-                
+
                 RCLCPP_FATAL(this->get_logger(), "Connection with brake ECU lost.");
 
                 break;
@@ -343,8 +347,8 @@ namespace vilma
 
             //* Verify that the user brake pedal was pressed | Emergency -- User braking
             {
-                if (sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_ ||
-                    (sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] >= gas_user_value_set_manual_ && debug_mode_))
+                if (user_command_handler_.trig(sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_ ||
+                                               (sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] >= gas_user_value_set_manual_ && debug_mode_)))
                 {
                     //* Change control mode to manual
                     set_control_mode(AutowareControlMode::MANUAL);
