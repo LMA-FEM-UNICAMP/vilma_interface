@@ -33,16 +33,16 @@
 
         # Controller
         kp_vel: 0.05
-        ki_vel: 0.00008
+        ki_vel: 0.0001
         kd_vel: 0.0
         int_max: 2500.0
-        output_min: -0.5
+        output_min: -0.8
         output_max: 0.3
         
         brake_deadband: -0.1
         speed_reference_ramp_rate: 1.0
         brake_user_pressure_set_emergency: 20.0
-        delay_to_user_command_ms: 250
+        delay_to_user_command_ms: 200
         autonomous_shift_enable: false
         control_timer_period_ms: 100
         
