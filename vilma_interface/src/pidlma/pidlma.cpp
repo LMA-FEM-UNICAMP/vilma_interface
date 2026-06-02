@@ -105,9 +105,11 @@ void PIDLMA::calculate(LongActuationCommand& control_action, double value, int64
   // Compute control action
   u_ = error * kp_ + kd_ * (error - error_ant_) / dt + ki_ * error_sum_;
 
-  std::cout << "***u = " << u_ << std::endl;
-  std::cout << "***p = " << error * kp_ << std::endl;
-  std::cout << "***i = " << ki_ * error_sum_ << std::endl;
+  std::cout << "***      u = " << u_ << std::endl;
+  std::cout << "***      p = " << error * kp_ << std::endl;
+  std::cout << "***      i = " << ki_ * error_sum_ << std::endl;
+  std::cout << "***error_i = " << error_sum_ << std::endl;
+  std::cout << "***     dt = " << dt << " s" << std::endl;
 
   // Saturate control action
   u_ = (u_ > output_max_) ? output_max_ : ((u_ < output_min_) ? output_min_ : u_);
