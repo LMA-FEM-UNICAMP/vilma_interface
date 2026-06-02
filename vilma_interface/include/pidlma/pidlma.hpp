@@ -23,14 +23,19 @@
 #ifndef SRC_PIDLMA_HPP_
 #define SRC_PIDLMA_HPP_
 
-
 #include "vilma_interface/vilma_ma_labeling.hpp"
+#include <cstdint>
 
-typedef struct{
-  double k_p;
-  double k_d;
-  double k_i;
-  double int_max;
+typedef struct
+{
+  double k_p_t;
+  double k_d_t;
+  double k_i_t;
+  double int_max_t;
+  double k_p_b;
+  double k_d_b;
+  double k_i_b;
+  double int_max_b;
   double t;
   double ramp_rate;
   double brake_deadband;
@@ -47,7 +52,10 @@ struct LongActuationCommand
 
 class PIDLMA
 {
-  double kp_, kd_, ki_;
+  double kp_t_, kd_t_, ki_t_;
+  double int_max_t_;
+  double kp_b_, kd_b_, ki_b_;
+  double int_max_b_;
   double error_ant_;
   double error_sum_;
   double t_ant_;
@@ -58,60 +66,58 @@ class PIDLMA
   double reference_;
   double output_max_;
   double output_min_;
-  double int_max_;
 
 public:
-
   /**
    * @brief Construct a new PIDLMA object
-   * 
+   *
    */
   PIDLMA();
 
   /**
    * @brief Configure the PID controller if the gains, initialize the time, configure reference integration
    * rate and the brake deadband for engine braking.
-   * 
-   * @param k_p 
-   * @param k_d 
-   * @param k_i 
-   * @param t 
-   * @param ramp_rate 
-   * @param brake_deadband 
-   * @param output_min 
-   * @param output_max 
+   *
+   * @param k_p
+   * @param k_d
+   * @param k_i
+   * @param t
+   * @param ramp_rate
+   * @param brake_deadband
+   * @param output_min
+   * @param output_max
    */
-  void configure(const PIDLMA_config_t &);
+  void configure(const PIDLMA_config_t&);
 
   /**
    * @brief Reset integration buffers in the controller and time
-   * 
-   * @param t 
+   *
+   * @param t Nanoseconds since epoch
    */
-  void reset(double t);
+  void reset(int64_t t);
 
   /**
-   * @brief Function that calculate the control action (throttle, braking and braking mode) for the current 
+   * @brief Function that calculate the control action (throttle, braking and braking mode) for the current
    * speed value at a time t.
-   * 
+   *
    * @param control_action Returned control action in LongActuationCommand format
-   * @param value Current longitudinal velocity 
-   * @param t Current time in seconds
+   * @param value Current longitudinal velocity
+   * @param t Nanoseconds since epoch
    */
-  void calculate(LongActuationCommand &control_action, double value, double t);
+  void calculate(LongActuationCommand& control_action, double value, int64_t t);
 
   /**
    * @brief Set the Reference object
-   * 
-   * @param reference 
+   *
+   * @param reference
    */
   void setReference(double reference);
 
   /**
    * @brief Auxiliary function to integrate the reference in ramp to smooth the control.
-   * 
-   * @param velocity_target 
-   * @param dt 
+   *
+   * @param velocity_target
+   * @param dt
    */
   void update_velocity_reference_in_ramp(double velocity_target, double dt);
 };
