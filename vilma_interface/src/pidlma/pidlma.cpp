@@ -55,6 +55,7 @@ void PIDLMA::reset(int64_t t)
   t_ant_ = t;
   error_ant_ = 0;
   error_sum_ = 0;
+  u_ = 0;
   velocity_reference_in_ramp_ = 0;
 }
 
@@ -87,19 +88,21 @@ void PIDLMA::calculate(LongActuationCommand& control_action, double value, int64
                     error * dt;
 
   //* Select the gains for positive error (throttle) or negative error (braking)
-  if (error_sum_ >= 0.0)
+  if (u_ >= 0.0 && kp_ != kp_t_)
   {
     // Throttle gains
     kp_ = kp_t_;
     kd_ = kp_t_;
     ki_ = kp_t_;
+    // error_sum_ = 0.0;
   }
-  else
+  else if (u_ < 0.0 && kp_ != kp_b_)
   {
     // Braking gains
     kp_ = kp_b_;
     kd_ = kp_b_;
     ki_ = kp_b_;
+    // error_sum_ = 0.0;
   }
 
   // Compute control action

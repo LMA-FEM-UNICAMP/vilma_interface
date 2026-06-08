@@ -32,22 +32,22 @@
         ma_sleep_period_min: 2
 
         # Controller
-        kp_vel_t: 0.05
-        ki_vel_t: 0.0001
-        kd_vel_t: 0.0
-        int_max_t: 2500.0
+        kp_vel_t: 0.1
+        ki_vel_t: 0.0008
+        kd_vel_t: 0.001
+        int_max_t: 500.0
 
         kp_vel_b: 0.05
-        ki_vel_b: 0.0001
+        ki_vel_b: 0.001
         kd_vel_b: 0.0
-        int_max_b: 2500.0
+        int_max_b: 800.0
         
-        output_min: -0.8
+        output_min: -1.0
         output_max: 0.3
         
         brake_deadband: -0.1
         speed_reference_ramp_rate: 2.5 # 0.0 for Autoware
-        brake_user_pressure_set_emergency: 20.0
+        brake_user_pressure_set_emergency: 10.0
         delay_to_user_command_ms: 200
         autonomous_shift_enable: false
         control_timer_period_ms: 100
