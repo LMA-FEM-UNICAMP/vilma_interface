@@ -353,7 +353,7 @@ void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
           //* Block control mode changing
           change_control_mode_enabled_.store(false);
 
-          RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 500,
+          RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
                                "Control Mode changed to MANUAL by user braking.");
         }
         else
