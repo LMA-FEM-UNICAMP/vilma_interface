@@ -219,7 +219,6 @@ namespace vilma
 
         rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_throttle_pub_;
         rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_braking_pub_;
-        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_speed_pub_;
         rclcpp::Publisher<std_msgs::msg::String>::SharedPtr hmi_status_pub_;
     };
 

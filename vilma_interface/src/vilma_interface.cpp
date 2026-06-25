@@ -238,8 +238,6 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
 
   hmi_braking_pub_ = this->create_publisher<std_msgs::msg::Float32>("/hmi/braking", rclcpp::QoS{ 1 });
 
-  hmi_speed_pub_ = this->create_publisher<std_msgs::msg::Float32>("/hmi/speed", rclcpp::QoS{ 1 });
-
   hmi_status_pub_ = this->create_publisher<std_msgs::msg::String>("/hmi/status", rclcpp::QoS{ 1 });
 
   set_control_mode(vilma_control_mode_);
@@ -413,7 +411,7 @@ void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
         std_msgs::msg::Float32 braking_value_hmi;
 
         throttle_value_hmi.data = sensors_ma_msg_.data[SensorsMA::GAS_VALUE] * 100.0;
-        braking_value_hmi.data = sensors_ma_msg_.data[SensorsMA::BRAKE_VALUE] * 100.0;
+        braking_value_hmi.data = sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE];
 
         hmi_throttle_pub_->publish(throttle_value_hmi);
         hmi_braking_pub_->publish(braking_value_hmi);
@@ -462,10 +460,6 @@ void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
 
       //* Debug logging
       RCLCPP_DEBUG(this->get_logger(), "MA -> PC | STATE_MA mode");
-
-      std_msgs::msg::Float32 speed_value_hmi;
-      speed_value_hmi.data = state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED];
-      hmi_speed_pub_->publish(speed_value_hmi);
 
       break;
     }
