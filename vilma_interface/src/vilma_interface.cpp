@@ -343,9 +343,9 @@ void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
 
       //* Verify that the user brake pedal was pressed | Emergency -- User braking
       {
-        if (user_command_handler_.trig(
-                (sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_ && !steer_only_mode_) ||
-                (sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] >= gas_user_value_set_manual_ && debug_mode_)))
+        if (user_command_handler_.trig((
+                (sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_) ||
+                (sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] >= gas_user_value_set_manual_ && debug_mode_) && !steer_only_mode_))) 
         {
           //* Change control mode to manual
           set_control_mode(AutowareControlMode::MANUAL);
@@ -920,6 +920,9 @@ void VilmaInterface::gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCom
  */
 void VilmaInterface::engage_callback(const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr msg)
 {
+
+        RCLCPP_WARN(this->get_logger(), "Engage request.");
+
   //* Select control mode from engage message (engage or not engage)
   if (msg->engage)  /// Engage Autoware (fully autonomous mode)
   {
@@ -946,6 +949,10 @@ void VilmaInterface::control_mode_request_callback(
 {
   //* Request change control mode to Autoware mode requested and assign
   //* the response status to service request answer
+
+
+    RCLCPP_WARN(this->get_logger(), "Change mode requested.");
+
   response->success = set_control_mode(request->mode);
 }
 

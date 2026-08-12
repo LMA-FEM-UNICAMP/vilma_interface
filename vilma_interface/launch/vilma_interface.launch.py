@@ -45,7 +45,7 @@ def launch_setup(context, *args, **kwargs):
 
     return [
         interface_node,
-        hmi_launch,
+        # hmi_launch,
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=interface_node,
