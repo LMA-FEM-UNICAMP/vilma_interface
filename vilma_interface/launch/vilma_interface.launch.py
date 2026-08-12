@@ -21,7 +21,7 @@ def launch_setup(context, *args, **kwargs):
   
     interface_share_dir = get_package_share_directory("vilma_interface")
     interface_param_file = os.path.join(
-        interface_share_dir, "config", "interface-param.yaml"
+        interface_share_dir, "config", "interface.param.yaml"
     )
     interface_node = Node(
         package="vilma_interface",

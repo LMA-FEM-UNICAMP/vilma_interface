@@ -129,6 +129,7 @@ namespace vilma
 
         /* Debug */
         bool debug_mode_;
+        bool steer_only_mode_;
         double gas_user_value_set_manual_;
 
         // Methods

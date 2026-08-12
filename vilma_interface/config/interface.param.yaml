@@ -65,4 +65,5 @@
 
         # Debug
         debug_mode: true
+        steer_only_mode: true
         gas_user_value_set_manual: 0.20

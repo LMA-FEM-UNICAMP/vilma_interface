@@ -71,6 +71,7 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
   this->declare_parameter("communication_timeout_ms", 1000);
   this->declare_parameter("autoware_command_time_validity_ms", 250);
   this->declare_parameter("debug_mode", false);
+  this->declare_parameter("steer_only_mode", false);
   this->declare_parameter("gas_user_value_set_manual", 0.10);
   this->declare_parameter("delay_to_user_command_ms", 250);
 
@@ -115,6 +116,7 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
 
   /* Debug */
   debug_mode_ = this->get_parameter("debug_mode").as_bool();
+  steer_only_mode_ = this->get_parameter("steer_only_mode").as_bool();
   gas_user_value_set_manual_ = this->get_parameter("gas_user_value_set_manual").as_double();
 
   /// Initialization and configuration of attributes
@@ -342,7 +344,7 @@ void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
       //* Verify that the user brake pedal was pressed | Emergency -- User braking
       {
         if (user_command_handler_.trig(
-                sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_ ||
+                (sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_ && !steer_only_mode_) ||
                 (sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] >= gas_user_value_set_manual_ && debug_mode_)))
         {
           //* Change control mode to manual
@@ -544,7 +546,7 @@ bool VilmaInterface::set_control_mode(uint8_t control_mode)
         case AutowareControlMode::AUTONOMOUS:
 
           mutex_joystick_command_.lock();  /// Lock mutex to update shared variable joystick_command_
-          {
+          if(!steer_only_mode_){
             //* Stamp to flag as a new data
             joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
@@ -610,6 +612,7 @@ bool VilmaInterface::set_control_mode(uint8_t control_mode)
         case AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY:
 
           mutex_joystick_command_.lock();  /// Lock mutex to update shared variable joystick_command_
+          if(!steer_only_mode_)
           {
             //* Stamp to flag as a new data
             joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
