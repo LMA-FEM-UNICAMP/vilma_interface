@@ -1,0 +1,78 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(Attach) ros2 debugger",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "/home/toffanetto/vilma/vilma_ws/install/vilma_interface/lib/vilma_interface/vilma_interface_node",
+            "MIMode": "gdb",
+            "processId": "pid",
+            "useExtendedRemote": false,
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        
+        {
+            "name": "(Launch) ros2 debugger",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/toffanetto/vilma/vilma_ws/install/vilma_interface/lib/vilma_interface/vilma_interface_node",
+            "args": [],
+            "stopAtEntry": true,         
+            "cwd": "/",
+            "environment": [],
+            "miDebuggerServerAddress": "localhost:3000",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        }, 
+        {
+            "name": "(Launch without server) ros2 debugger",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/toffanetto/vilma/vilma_ws/install/vilma_interface/lib/vilma_interface/vilma_interface_node",
+            "args": [],
+            "stopAtEntry": true,         
+            "cwd": "/",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+             "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+
+
+    ]
+}
