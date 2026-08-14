@@ -752,6 +752,14 @@ namespace vilma
       //* Process received data
       from_ma(tx_type, stamp);
 
+      //* Clear stamp to flag the message as successfully sent
+      mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+      {
+        // If joystick command was the sent one, the stamp is resetted to avoid send the same message again.
+        joystick_command_[0] = (joystick_command_[0] == to_ma_vector_[0]) ? 0.0 : joystick_command_[0];
+      }
+      mutex_joystick_command_.unlock(); /// Unlock mutex
+
       //* Logging one time per second the MA period and delay.
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MA period: %f | MA delay: %f",
                            ma_timer_dt.seconds(), (ma_timer_dt.seconds() - ma_timer_period_ms_ * 1e-3));
@@ -777,15 +785,8 @@ namespace vilma
                     ma_sleep_period_min_);
       }
     }
-
-    //* Clear stamp to flag the message as sent
-    mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
-    {
-      // If joystick command was the sent one, the stamp is resetted to avoid send the same message again.
-      joystick_command_[0] = (joystick_command_[0] == to_ma_vector_[0]) ? 0.0 : joystick_command_[0];
-    }
-    mutex_joystick_command_.unlock(); /// Unlock mutex
-
+    
+    //* Logging the time lapsed since callback call (must be smaller then period)
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MA timer loop time: %f ms",
                          (this->get_clock()->now().nanoseconds() - stamp.nanoseconds()) * 1e-6);
 
