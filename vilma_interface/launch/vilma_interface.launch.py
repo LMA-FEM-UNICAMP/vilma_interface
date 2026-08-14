@@ -43,7 +43,9 @@ def launch_setup(context, *args, **kwargs):
                     "/launch/vilma_hmi.launch.py",
                 ]
             ),
-            launch_arguments={"interface": "vilma_autoware"}.items(),
+            launch_arguments={
+                "interface": LaunchConfiguration("interface").perform(context)
+            }.items(),
         )
         launch_items.append(hmi_launch)
 
@@ -60,6 +62,9 @@ def launch_setup(context, *args, **kwargs):
 def generate_launch_description():
 
     return LaunchDescription(
-        [DeclareLaunchArgument("hmi", default_value="false")]
+        [
+            DeclareLaunchArgument("hmi", default_value="false"),
+            DeclareLaunchArgument("interface", default_value="vilma_autoware"),
+        ]
         + [OpaqueFunction(function=launch_setup)]
     )
