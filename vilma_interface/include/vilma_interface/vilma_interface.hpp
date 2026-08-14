@@ -100,6 +100,7 @@ namespace vilma
         /* Mutexes */
         std::mutex mutex_joystick_command_;
         std::mutex mutex_ma_timer_;
+        std::mutex mutex_vilma_state_;
         std::mutex mutex_velocity_controller_;
 
         /* MA */
