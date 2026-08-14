@@ -670,6 +670,13 @@ bool VilmaInterface::set_control_mode(uint8_t control_mode)
  */
 void VilmaInterface::ma_timer_callback()
 {
+
+  //* If last timer still running, abort call
+  if(!mutex_ma_timer_.try_lock())
+  {
+    return;
+  }
+
   //* Update callback calling stamp
   rclcpp::Time stamp = this->get_clock()->now();
 
@@ -731,6 +738,8 @@ void VilmaInterface::ma_timer_callback()
 
   RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MA timer loop time: %f s",
                         this->get_clock()->now().seconds() - stamp.seconds());
+
+  mutex_ma_timer_.unlock();
 }
 
 /**

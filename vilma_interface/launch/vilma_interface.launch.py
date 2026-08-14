@@ -24,6 +24,7 @@ def launch_setup(context, *args, **kwargs):
         interface_share_dir, "config", "interface.param.yaml"
     )
     interface_node = Node(
+        # prefix='gdbserver localhost:3000', # ? debug mode
         package="vilma_interface",
         executable="vilma_interface_node",
         output="both",
