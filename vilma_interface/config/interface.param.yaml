@@ -19,10 +19,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-  
- vilma_interface:
-    ros__parameters:
 
+vilma_interface:
+    ros__parameters:
         # MicroAutoBox UDP communication
         pc_udp_port: 5001
         ma_udp_port: 5001
@@ -41,29 +40,30 @@
         ki_vel_b: 0.001
         kd_vel_b: 0.0
         int_max_b: 800.0
-        
+
         output_min: -1.0
         output_max: 0.3
-        
+
         brake_deadband: -0.1
         speed_reference_ramp_rate: 2.5 # 0.0 for Autoware
         brake_user_pressure_set_emergency: 10.0
         delay_to_user_command_ms: 200
         autonomous_shift_enable: false
         control_timer_period_ms: 100
-        
+
         # Timeout
         joystick_command_time_validity_ms: 500
         communication_timeout_ms: 1000
         autoware_command_time_validity_ms: 250
 
         # Vehicle
-        max_steering_tire_angle_rad: 0.4410 # 25.27 degrees
+
+        max_steering_tire_angle_rad: 0.4410 # 25.27 deg #! Note that the maximum physical value is 24.7285 deg (0.4316 rad)
         max_gas_value: 1.0
         max_brake_value: 1.0
         max_speed_km_h: 60.0
 
         # Debug
-        debug_mode: true
-        steer_only_mode: true
+        debug_mode: true # Enable change to manual mode through throttle
         gas_user_value_set_manual: 0.20
+        steer_only_mode: true # Disable pedals emergency mode and void velocity control

@@ -146,8 +146,12 @@ namespace vilma
 
     sensors_ma_msg_.data.reserve(from_ma_length_ + 1);
     sensors_ma_msg_.data.resize(from_ma_length_ + 1, 0.0);
-    state_ma_msg_.data.reserve(from_ma_length_ + 1);
-    state_ma_msg_.data.resize(from_ma_length_ + 1, 0.0);
+    mutex_vilma_state_.lock();
+    {
+      state_ma_msg_.data.reserve(from_ma_length_ + 1);
+      state_ma_msg_.data.resize(from_ma_length_ + 1, 0.0);
+    }
+    mutex_vilma_state_.unlock();
 
     //* Configure UDP communication wih MA
     bool udp_configure_response = ma_udp_client.configure(
@@ -437,19 +441,27 @@ namespace vilma
     //* Vehicle state information
     case TxTypeMA::STATE_MA:
     {
+      std_msgs::msg::Float64MultiArray state_ma_msg;
+
+      mutex_vilma_state_.lock();
+      {
+        state_ma_msg = state_ma_msg_;
+      }
+      mutex_vilma_state_.unlock();
+
       //* Publish debug topic
-      state_ma_msg_.data[0] = stamp.seconds();
-      std::copy(from_ma_vector_.begin(), from_ma_vector_.end(), state_ma_msg_.data.begin() + 1);
-      state_ma_pub_->publish(state_ma_msg_);
+      state_ma_msg.data[0] = stamp.seconds();
+      std::copy(from_ma_vector_.begin(), from_ma_vector_.end(), state_ma_msg.data.begin() + 1);
+      state_ma_pub_->publish(state_ma_msg);
 
       //* Publish velocity status topic to Autoware
       {
         autoware_vehicle_msgs::msg::VelocityReport velocity_report_msg;
 
         velocity_report_msg.header = header_msg;
-        velocity_report_msg.heading_rate = state_ma_msg_.data[StateMA::ANGULAR_YAW_SPEED];
-        velocity_report_msg.lateral_velocity = state_ma_msg_.data[StateMA::LATERAL_VELOCITY];
-        velocity_report_msg.longitudinal_velocity = state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED];
+        velocity_report_msg.heading_rate = state_ma_msg.data[StateMA::ANGULAR_YAW_SPEED];
+        velocity_report_msg.lateral_velocity = state_ma_msg.data[StateMA::LATERAL_VELOCITY];
+        velocity_report_msg.longitudinal_velocity = state_ma_msg.data[StateMA::LONGITUDINAL_SPEED];
 
         velocity_report_pub_->publish(velocity_report_msg);
       }
@@ -459,7 +471,7 @@ namespace vilma
         autoware_vehicle_msgs::msg::SteeringReport steering_report_msg;
 
         steering_report_msg.stamp = header_msg.stamp;
-        steering_report_msg.steering_tire_angle = state_ma_msg_.data[StateMA::STEER_TIRE_ANGLE];
+        steering_report_msg.steering_tire_angle = state_ma_msg.data[StateMA::STEER_TIRE_ANGLE];
 
         steering_report_pub_->publish(steering_report_msg);
       }
@@ -573,7 +585,11 @@ namespace vilma
             joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
 
             //* Avoid send old steer value
-            joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
+            mutex_vilma_state_.lock();
+            {
+              joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
+            }
+            mutex_vilma_state_.unlock();
           }
           mutex_joystick_command_.unlock(); /// Unlock mutex
 
@@ -609,7 +625,11 @@ namespace vilma
             joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
 
             //* Avoid send old steer value
-            joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
+            mutex_vilma_state_.lock();
+            {
+              joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(state_ma_msg_.data[StateMA::STEER_ANGLE]);
+            }
+            mutex_vilma_state_.unlock();
           }
           mutex_joystick_command_.unlock(); /// Unlock mutex
 
@@ -833,6 +853,14 @@ namespace vilma
     //* Creating gas and brake value variables
     LongActuationCommand control_action;
 
+    double longitudinal_speed;
+
+    mutex_vilma_state_.lock();
+    {
+      longitudinal_speed = state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED];
+    }
+    mutex_vilma_state_.unlock();
+
     //* Creating brake command variable initialized in manual braking
     /// By-Wire Braking is only enabled when autonomous braking is needed
     control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
@@ -844,7 +872,7 @@ namespace vilma
         //* Computing control action from current speed and speed reference
         mutex_velocity_controller_.lock();
         {
-          velocity_controller_.calculate(control_action, state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED],
+          velocity_controller_.calculate(control_action, longitudinal_speed,
                                          this->get_clock()->now().nanoseconds());
         }
         mutex_velocity_controller_.unlock();
