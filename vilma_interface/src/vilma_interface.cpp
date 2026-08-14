@@ -466,14 +466,23 @@ namespace vilma
         velocity_report_pub_->publish(velocity_report_msg);
       }
 
-      //* Publish steering status topic to Autoware
+      //* Checking steering angle
+
+      if (abs(state_ma_msg.data[StateMA::STEER_TIRE_ANGLE]) <= max_steering_tire_angle_rad_)
       {
+        //* Publish steering status topic to Autoware
         autoware_vehicle_msgs::msg::SteeringReport steering_report_msg;
 
         steering_report_msg.stamp = header_msg.stamp;
         steering_report_msg.steering_tire_angle = state_ma_msg.data[StateMA::STEER_TIRE_ANGLE];
 
         steering_report_pub_->publish(steering_report_msg);
+      }
+      else
+      {
+        RCLCPP_FATAL(this->get_logger(), "Steering tire angle value out of limits! Please perform steering zero calibration!");
+
+        set_control_mode(AutowareControlMode::MANUAL);
       }
 
       //* Publish control mode report topic to Autoware
@@ -805,7 +814,7 @@ namespace vilma
                     ma_sleep_period_min_);
       }
     }
-    
+
     //* Logging the time lapsed since callback call (must be smaller then period)
     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MA timer loop time: %f ms",
                          (this->get_clock()->now().nanoseconds() - stamp.nanoseconds()) * 1e-6);
