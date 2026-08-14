@@ -111,6 +111,7 @@ public:
     constexpr static int STEER_COMMAND_POSITION = 2;
     constexpr static int STEER_COMMAND_VOLTAGE = 3;
     constexpr static int STEER_COMMAND_LOOK_ZERO = 4;
+    constexpr static int MODE_STEER_COMMAND_LOOK_ZERO = 5;
     constexpr static int GEAR_COMMAND_OFF = 0;
     constexpr static int GEAR_COMMAND_NEUTRAL = 1;
     constexpr static int GEAR_COMMAND_REVERSE = 2;
