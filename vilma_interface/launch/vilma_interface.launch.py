@@ -44,7 +44,7 @@ def launch_setup(context, *args, **kwargs):
                 ]
             ),
             launch_arguments={
-                "interface": LaunchConfiguration("interface").perform(context)
+                "hmi": LaunchConfiguration("interface").perform(context)
             }.items(),
         )
         launch_items.append(hmi_launch)

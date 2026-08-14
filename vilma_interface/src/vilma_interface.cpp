@@ -481,8 +481,8 @@ namespace vilma
       else
       {
         RCLCPP_FATAL(this->get_logger(), "Steering tire angle value out of limits! Please perform steering zero calibration!");
-
-        set_control_mode(AutowareControlMode::MANUAL);
+        //! Removed because of steering peak on start
+        // set_control_mode(AutowareControlMode::MANUAL);
       }
 
       //* Publish control mode report topic to Autoware
