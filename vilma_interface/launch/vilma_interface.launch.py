@@ -18,7 +18,9 @@ from launch_ros.actions import Node
 
 
 def launch_setup(context, *args, **kwargs):
-  
+
+    launch_items = []
+
     interface_share_dir = get_package_share_directory("vilma_interface")
     interface_param_file = os.path.join(
         interface_share_dir, "config", "interface.param.yaml"
@@ -30,10 +32,10 @@ def launch_setup(context, *args, **kwargs):
         output="both",
         parameters=[interface_param_file],
     )
+    launch_items.append(interface_node)
 
-    hmi_launch = []
+    if LaunchConfiguration("hmi").perform(context).lower() == "true":
 
-    if LaunchConfiguration("hmi").perform(context):
         hmi_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 [
@@ -43,10 +45,9 @@ def launch_setup(context, *args, **kwargs):
             ),
             launch_arguments={"interface": "vilma_autoware"}.items(),
         )
+        launch_items.append(hmi_launch)
 
-    return [
-        interface_node,
-        # hmi_launch,
+    return launch_items + [
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=interface_node,
@@ -59,6 +60,6 @@ def launch_setup(context, *args, **kwargs):
 def generate_launch_description():
 
     return LaunchDescription(
-        [DeclareLaunchArgument("hmi", default_value="False")]
+        [DeclareLaunchArgument("hmi", default_value="false")]
         + [OpaqueFunction(function=launch_setup)]
     )
