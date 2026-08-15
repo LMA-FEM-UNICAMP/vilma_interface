@@ -565,8 +565,8 @@ bool VilmaInterface::set_control_mode(uint8_t control_mode)
         //* Manual mode
         case AutowareControlMode::MANUAL:
 
-          mutex_joystick_command_
-            .lock();  /// Lock mutex to update shared variable joystick_command_
+          /// Lock mutex to update shared variable joystick_command_
+          mutex_joystick_command_.lock();
           {
             //* Stamp to flag as a new data
             joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
@@ -599,8 +599,8 @@ bool VilmaInterface::set_control_mode(uint8_t control_mode)
         //* Fully autonomous mode
         case AutowareControlMode::AUTONOMOUS:
 
-          mutex_joystick_command_
-            .lock();  /// Lock mutex to update shared variable joystick_command_
+          /// Lock mutex to update shared variable joystick_command_
+          mutex_joystick_command_.lock();
           if (!steer_only_mode_) {
             //* Stamp to flag as a new data
             joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
@@ -644,8 +644,8 @@ bool VilmaInterface::set_control_mode(uint8_t control_mode)
         //* Autonomous steering mode
         case AutowareControlMode::AUTONOMOUS_STEER_ONLY:
 
-          mutex_joystick_command_
-            .lock();  /// Lock mutex to update shared variable joystick_command_
+          /// Lock mutex to update shared variable joystick_command_
+          mutex_joystick_command_.lock();
           {
             //* Stamp to flag as a new data
             joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
@@ -681,8 +681,8 @@ bool VilmaInterface::set_control_mode(uint8_t control_mode)
         //* Autonomous velocity mode
         case AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY:
 
-          mutex_joystick_command_
-            .lock();  /// Lock mutex to update shared variable joystick_command_
+          /// Lock mutex to update shared variable joystick_command_
+          mutex_joystick_command_.lock();
           if (!steer_only_mode_) {
             //* Stamp to flag as a new data
             joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
@@ -719,8 +719,8 @@ bool VilmaInterface::set_control_mode(uint8_t control_mode)
         //* Reset steering
         case JoystickMA::MODE_STEER_COMMAND_LOOK_ZERO:
 
-          mutex_joystick_command_
-            .lock();  /// Lock mutex to update shared variable joystick_command_
+          /// Lock mutex to update shared variable joystick_command_
+          mutex_joystick_command_.lock();
           {
             //* Stamp to flag as a new data
             joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
@@ -892,8 +892,9 @@ void VilmaInterface::control_timer_callback()
   /// By-Wire Braking is only enabled when autonomous braking is needed
   control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
 
+    /// Lock mutex to read and update shared variable joystick_command_
   mutex_joystick_command_
-    .lock();  /// Lock mutex to read and update shared variable joystick_command_
+    .lock();
   {
     if (joystick_command_[JoystickMA::GAS_COMMAND] == JoystickMA::GAS_COMMAND_POSITION) {
       //* Computing control action from current speed and speed reference
