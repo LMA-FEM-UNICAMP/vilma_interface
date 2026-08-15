@@ -68,6 +68,7 @@
 
 namespace vilma
 {
+
     class VilmaInterface : public rclcpp::Node
     {
 
@@ -101,6 +102,7 @@ namespace vilma
         std::mutex mutex_joystick_command_;
         std::mutex mutex_ma_timer_;
         std::mutex mutex_vilma_state_;
+        std::mutex mutex_vilma_sensors_;
         std::mutex mutex_velocity_controller_;
 
         /* MA */
@@ -114,6 +116,8 @@ namespace vilma
         /* Vehicle Control */
         int ma_operation_mode_;
         std::atomic<uint8_t> vilma_control_mode_;
+        std::atomic<double> vilma_steer_tire_angle_;
+        std::atomic<double> vilma_longitudinal_speed_;
         std::atomic<bool> change_control_mode_enabled_;
         PIDLMA velocity_controller_;
         double max_steering_tire_angle_rad_;
