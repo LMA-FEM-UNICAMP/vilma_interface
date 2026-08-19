@@ -31,6 +31,7 @@ def launch_setup(context, *args, **kwargs):
         executable="vilma_interface_node",
         output="both",
         parameters=[interface_param_file],
+        # arguments=['--ros-args', '--log-level', 'debug']
     )
     launch_items.append(interface_node)
 

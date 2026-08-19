@@ -347,8 +347,7 @@ void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
   switch (type_tx) {
     //* Vehicle sensors information
     case TxTypeMA::SENSORS_MA: {
-      std_msgs::msg::Float64MultiArray sensors_ma_msg_;
-
+      
       mutex_vilma_sensors_.lock();
       {
         //* Publishing debug topic
@@ -473,6 +472,7 @@ void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
           hmi_braking_pub_->publish(braking_value_hmi);
         }
       }
+      mutex_vilma_sensors_.unlock();
 
       break;
     }
@@ -892,9 +892,8 @@ void VilmaInterface::control_timer_callback()
   /// By-Wire Braking is only enabled when autonomous braking is needed
   control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
 
-    /// Lock mutex to read and update shared variable joystick_command_
-  mutex_joystick_command_
-    .lock();
+  /// Lock mutex to read and update shared variable joystick_command_
+  mutex_joystick_command_.lock();
   {
     if (joystick_command_[JoystickMA::GAS_COMMAND] == JoystickMA::GAS_COMMAND_POSITION) {
       //* Computing control action from current speed and speed reference
