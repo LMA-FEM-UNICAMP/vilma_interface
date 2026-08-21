@@ -29,7 +29,7 @@ PIDLMA::PIDLMA()
   // configure(0.0, 0.0, 0.0, 10.0, 0.0, 3.0, -0.1);
 }
 
-void PIDLMA::configure(const PIDLMA_config_t& control_configuration)
+void PIDLMA::configure(const PIDLMA_config_t &control_configuration)
 {
   kp_t_ = control_configuration.k_p_t;
   kd_t_ = control_configuration.k_d_t;
@@ -59,11 +59,13 @@ void PIDLMA::reset(int64_t t)
   velocity_reference_in_ramp_ = 0;
 }
 
-void PIDLMA::calculate(LongActuationCommand& control_action, double value, int64_t t)
+void PIDLMA::calculate(LongActuationCommand &control_action, double value, int64_t t)
 {
   // Gains for calculate control action
-  double kp_, kd_, ki_;
-  double int_max_;
+  double kp_ = 0.0;
+  double kd_ = 0.0;
+  double ki_ = 0.0;
+  double int_max_ = 0.0;
 
   // Real sample period in seconds
   double dt = static_cast<double>(t - t_ant_) * 1e-9;
@@ -83,9 +85,9 @@ void PIDLMA::calculate(LongActuationCommand& control_action, double value, int64
 
   // Integrate error and saturate if greater then int_max_ or output is saturated
   error_sum_ += ((u_ >= output_max_ && error > 0) || (u_ <= output_min_ && error < 0) ||
-                 (error_sum_ >= int_max_ && error > 0) || (error_sum_ <= -int_max_ && error < 0)) ?
-                    0 :
-                    error * dt;
+                 (error_sum_ >= int_max_ && error > 0) || (error_sum_ <= -int_max_ && error < 0))
+                    ? 0
+                    : error * dt;
 
   //* Select the gains for positive error (throttle) or negative error (braking)
   if (u_ >= 0.0 && kp_ != kp_t_)
@@ -121,7 +123,7 @@ void PIDLMA::calculate(LongActuationCommand& control_action, double value, int64
   error_ant_ = error;
 
   //* Checking control action value to assign as braking, accelerating or engine braking
-  if (u_ <= brake_deadband_)  /// Active braking
+  if (u_ <= brake_deadband_) /// Active braking
   {
     //* Assign the control action as braking percentage mapped from [-1.0, -0.1] to [0.0, 1.0]
     control_action.brake_value = (-u_ + brake_deadband_) / (1.0 - brake_deadband_);
@@ -132,10 +134,10 @@ void PIDLMA::calculate(LongActuationCommand& control_action, double value, int64
     //* Setting brake mode in autonomous
     control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
   }
-  else if (u_ >= 0)  /// Accelerating
+  else if (u_ >= 0) /// Accelerating
   {
     //* Assign control action as gas pedal position [0.0, 1.0]
-    control_action.gas_value = u_;  // + 0.07;
+    control_action.gas_value = u_; // + 0.07;
   }
   /// Else: engine braking
 
