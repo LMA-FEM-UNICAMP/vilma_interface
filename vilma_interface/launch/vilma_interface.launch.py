@@ -65,7 +65,7 @@ def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument("hmi", default_value="false"),
-            DeclareLaunchArgument("interface", default_value="vilma_autoware"),
+            DeclareLaunchArgument("interface", default_value="vilma_autoware_steer_only"),
         ]
         + [OpaqueFunction(function=launch_setup)]
     )

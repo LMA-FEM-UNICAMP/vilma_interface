@@ -27,319 +27,318 @@
 
 namespace vilma
 {
-  /**
-   *
-   * @brief Class constructor
-   * @param None
-   * @return void
-   */
-  VilmaInterface::VilmaInterface() : Node("vilma_interface")
+/**
+ *
+ * @brief Class constructor
+ * @param None
+ * @return void
+ */
+VilmaInterface::VilmaInterface() : Node("vilma_interface")
+{
+  /// Placeholders
+  using std::placeholders::_1;
+  using std::placeholders::_2;
+
+  /// Parameters
+
+  /* ROS2 parameters declaration */
+  this->declare_parameter("ma_timer_period_ms", 10);
+  this->declare_parameter("ma_sleep_period_min", 2);
+  this->declare_parameter("control_timer_period_ms", 50);
+  this->declare_parameter("pc_udp_port", 5001);
+  this->declare_parameter("ma_udp_port", 5001);
+  this->declare_parameter("udp_timeout_ms", 4);
+  this->declare_parameter("ma_ip", "192.168.140.3");
+  this->declare_parameter("autonomous_shift_enable", false);
+  this->declare_parameter("kp_vel_t", 0.0015);
+  this->declare_parameter("ki_vel_t", 0.0);
+  this->declare_parameter("kd_vel_t", 0.0);
+  this->declare_parameter("int_max_t", 10.0);
+  this->declare_parameter("kp_vel_b", 0.0015);
+  this->declare_parameter("ki_vel_b", 0.0);
+  this->declare_parameter("kd_vel_b", 0.0);
+  this->declare_parameter("int_max_b", 10.0);
+  this->declare_parameter("output_min", -1.0);  // Max braking [0.0, -1.0] --- [min, max]
+  this->declare_parameter("output_max", 0.4);   // Max throttle [0.0, 1.0] --- [min, max]
+  this->declare_parameter("brake_deadband", -0.1);
+  this->declare_parameter("max_steering_tire_angle_rad", 25.27 * M_PI / 180.0);
+  this->declare_parameter("max_gas_value", 1.0);
+  this->declare_parameter("max_brake_value", 1.0);
+  this->declare_parameter("max_speed_km_h", 60.0);
+  this->declare_parameter("speed_reference_ramp_rate", 3.0);
+  this->declare_parameter("brake_user_pressure_set_emergency", 10.0);
+  this->declare_parameter("joystick_command_time_validity_ms", 500);
+  this->declare_parameter("communication_timeout_ms", 1000);
+  this->declare_parameter("autoware_command_time_validity_ms", 250);
+  this->declare_parameter("debug_mode", false);
+  this->declare_parameter("steer_only_mode", false);
+  this->declare_parameter("gas_user_value_set_manual", 0.10);
+  this->declare_parameter("delay_to_user_command_ms", 250);
+
+  /* UDP communication parameters */
+  int pc_udp_port = this->get_parameter("pc_udp_port").as_int();
+  int ma_udp_port = this->get_parameter("ma_udp_port").as_int();
+  int udp_timeout_ms = this->get_parameter("udp_timeout_ms").as_int();
+  std::string ma_ip = this->get_parameter("ma_ip").as_string();
+  ma_timer_period_ms_ = this->get_parameter("ma_timer_period_ms").as_int();
+  ma_sleep_period_min_ = this->get_parameter("ma_sleep_period_min").as_int();
+
+  /* Longitudinal velocity controller parameters */
+  PIDLMA_config_t control_configuration;
+  control_configuration.k_p_t = this->get_parameter("kp_vel_t").as_double();
+  control_configuration.k_i_t = this->get_parameter("ki_vel_t").as_double();
+  control_configuration.k_d_t = this->get_parameter("kd_vel_t").as_double();
+  control_configuration.int_max_t = this->get_parameter("int_max_t").as_double();
+  control_configuration.k_p_b = this->get_parameter("kp_vel_b").as_double();
+  control_configuration.k_i_b = this->get_parameter("ki_vel_b").as_double();
+  control_configuration.k_d_b = this->get_parameter("kd_vel_b").as_double();
+  control_configuration.int_max_b = this->get_parameter("int_max_b").as_double();
+  control_configuration.output_min = this->get_parameter("output_min").as_double();
+  control_configuration.output_max = this->get_parameter("output_max").as_double();
+  control_configuration.ramp_rate = this->get_parameter("speed_reference_ramp_rate").as_double();
+  control_configuration.brake_deadband = this->get_parameter("brake_deadband").as_double();
+
+  brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
+  autonomous_shift_enable_ = this->get_parameter("autonomous_shift_enable").as_bool();
+  control_timer_period_ms_ = this->get_parameter("control_timer_period_ms").as_int();
+  delay_to_user_command_ms_ = this->get_parameter("delay_to_user_command_ms").as_int();
+
+  /* Command time validity */
+  autoware_command_time_validity_ms_ = this->get_parameter("autoware_command_time_validity_ms").as_int();
+  communication_timeout_ms_ = this->get_parameter("communication_timeout_ms").as_int();
+  double joystick_command_time_validity_ms = this->get_parameter("joystick_command_time_validity_ms").as_int();
+
+  /* Vehicle parameters */
+  max_steering_tire_angle_rad_ = this->get_parameter("max_steering_tire_angle_rad").as_double();
+  max_gas_value_ = this->get_parameter("max_gas_value").as_double();
+  max_brake_value_ = this->get_parameter("max_brake_value").as_double();
+  max_speed_m_s_ = this->get_parameter("max_speed_km_h").as_double() / 3.6;
+
+  /* Debug */
+  debug_mode_ = this->get_parameter("debug_mode").as_bool();
+  steer_only_mode_ = this->get_parameter("steer_only_mode").as_bool();
+  gas_user_value_set_manual_ = this->get_parameter("gas_user_value_set_manual").as_double();
+
+  /// Initialization and configuration of attributes
+
+  /* Vehicle variables initialization */
+  ma_operation_mode_ = OperationModeMA::MANUAL_MODE;
+  vilma_control_mode_ = AutowareControlMode::MANUAL;
+  change_control_mode_enabled_.store(true);
+
+  /* MA messages configuration */
+  to_ma_length_ = 10;
+  from_ma_length_ = 30;
+
+  mutex_joystick_command_.lock();
   {
-    /// Placeholders
-    using std::placeholders::_1;
-    using std::placeholders::_2;
+    joystick_command_.reserve(to_ma_length_);
+    joystick_command_.resize(to_ma_length_, 0.0);
+    joystick_command_[JoystickMA::TIME_VALIDITY] = joystick_command_time_validity_ms;
+  }
+  mutex_joystick_command_.unlock();
 
-    /// Parameters
+  to_ma_vector_.reserve(to_ma_length_);
+  to_ma_vector_.resize(to_ma_length_, 0.0);
 
-    /* ROS2 parameters declaration */
-    this->declare_parameter("ma_timer_period_ms", 10);
-    this->declare_parameter("ma_sleep_period_min", 2);
-    this->declare_parameter("control_timer_period_ms", 50);
-    this->declare_parameter("pc_udp_port", 5001);
-    this->declare_parameter("ma_udp_port", 5001);
-    this->declare_parameter("udp_timeout_ms", 4);
-    this->declare_parameter("ma_ip", "192.168.140.3");
-    this->declare_parameter("autonomous_shift_enable", false);
-    this->declare_parameter("kp_vel_t", 0.0015);
-    this->declare_parameter("ki_vel_t", 0.0);
-    this->declare_parameter("kd_vel_t", 0.0);
-    this->declare_parameter("int_max_t", 10.0);
-    this->declare_parameter("kp_vel_b", 0.0015);
-    this->declare_parameter("ki_vel_b", 0.0);
-    this->declare_parameter("kd_vel_b", 0.0);
-    this->declare_parameter("int_max_b", 10.0);
-    this->declare_parameter("output_min", -1.0); // Max braking [0.0, -1.0] --- [min, max]
-    this->declare_parameter("output_max", 0.4);  // Max throttle [0.0, 1.0] --- [min, max]
-    this->declare_parameter("brake_deadband", -0.1);
-    this->declare_parameter("max_steering_tire_angle_rad", 25.27 * M_PI / 180.0);
-    this->declare_parameter("max_gas_value", 1.0);
-    this->declare_parameter("max_brake_value", 1.0);
-    this->declare_parameter("max_speed_km_h", 60.0);
-    this->declare_parameter("speed_reference_ramp_rate", 3.0);
-    this->declare_parameter("brake_user_pressure_set_emergency", 10.0);
-    this->declare_parameter("joystick_command_time_validity_ms", 500);
-    this->declare_parameter("communication_timeout_ms", 1000);
-    this->declare_parameter("autoware_command_time_validity_ms", 250);
-    this->declare_parameter("debug_mode", false);
-    this->declare_parameter("steer_only_mode", false);
-    this->declare_parameter("gas_user_value_set_manual", 0.10);
-    this->declare_parameter("delay_to_user_command_ms", 250);
+  from_ma_vector_.reserve(from_ma_length_);
+  from_ma_vector_.resize(from_ma_length_, 0.0);
 
-    /* UDP communication parameters */
-    int pc_udp_port = this->get_parameter("pc_udp_port").as_int();
-    int ma_udp_port = this->get_parameter("ma_udp_port").as_int();
-    int udp_timeout_ms = this->get_parameter("udp_timeout_ms").as_int();
-    std::string ma_ip = this->get_parameter("ma_ip").as_string();
-    ma_timer_period_ms_ = this->get_parameter("ma_timer_period_ms").as_int();
-    ma_sleep_period_min_ = this->get_parameter("ma_sleep_period_min").as_int();
+  mutex_vilma_sensors_.lock();
+  {
+    sensors_ma_msg_.data.reserve(from_ma_length_ + 1);
+    sensors_ma_msg_.data.resize(from_ma_length_ + 1, 0.0);
+  }
+  mutex_vilma_sensors_.unlock();
 
-    /* Longitudinal velocity controller parameters */
-    PIDLMA_config_t control_configuration;
-    control_configuration.k_p_t = this->get_parameter("kp_vel_t").as_double();
-    control_configuration.k_i_t = this->get_parameter("ki_vel_t").as_double();
-    control_configuration.k_d_t = this->get_parameter("kd_vel_t").as_double();
-    control_configuration.int_max_t = this->get_parameter("int_max_t").as_double();
-    control_configuration.k_p_b = this->get_parameter("kp_vel_b").as_double();
-    control_configuration.k_i_b = this->get_parameter("ki_vel_b").as_double();
-    control_configuration.k_d_b = this->get_parameter("kd_vel_b").as_double();
-    control_configuration.int_max_b = this->get_parameter("int_max_b").as_double();
-    control_configuration.output_min = this->get_parameter("output_min").as_double();
-    control_configuration.output_max = this->get_parameter("output_max").as_double();
-    control_configuration.ramp_rate = this->get_parameter("speed_reference_ramp_rate").as_double();
-    control_configuration.brake_deadband = this->get_parameter("brake_deadband").as_double();
+  mutex_vilma_state_.lock();
+  {
+    state_ma_msg_.data.reserve(from_ma_length_ + 1);
+    state_ma_msg_.data.resize(from_ma_length_ + 1, 0.0);
+  }
+  mutex_vilma_state_.unlock();
 
-    brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
-    autonomous_shift_enable_ = this->get_parameter("autonomous_shift_enable").as_bool();
-    control_timer_period_ms_ = this->get_parameter("control_timer_period_ms").as_int();
-    delay_to_user_command_ms_ = this->get_parameter("delay_to_user_command_ms").as_int();
+  //* Configure UDP communication wih MA
+  bool udp_configure_response = ma_udp_client.configure(
+      pc_udp_port, ma_udp_port, ma_ip, boost::posix_time::millisec(udp_timeout_ms), to_ma_length_, from_ma_length_);
 
-    /* Command time validity */
-    autoware_command_time_validity_ms_ = this->get_parameter("autoware_command_time_validity_ms").as_int();
-    communication_timeout_ms_ = this->get_parameter("communication_timeout_ms").as_int();
-    double joystick_command_time_validity_ms = this->get_parameter("joystick_command_time_validity_ms").as_int();
-
-    /* Vehicle parameters */
-    max_steering_tire_angle_rad_ = this->get_parameter("max_steering_tire_angle_rad").as_double();
-    max_gas_value_ = this->get_parameter("max_gas_value").as_double();
-    max_brake_value_ = this->get_parameter("max_brake_value").as_double();
-    max_speed_m_s_ = this->get_parameter("max_speed_km_h").as_double() / 3.6;
-
-    /* Debug */
-    debug_mode_ = this->get_parameter("debug_mode").as_bool();
-    steer_only_mode_ = this->get_parameter("steer_only_mode").as_bool();
-    gas_user_value_set_manual_ = this->get_parameter("gas_user_value_set_manual").as_double();
-
-    /// Initialization and configuration of attributes
-
-    /* Vehicle variables initialization */
-    ma_operation_mode_ = OperationModeMA::MANUAL_MODE;
-    vilma_control_mode_ = AutowareControlMode::MANUAL;
-    change_control_mode_enabled_.store(true);
-
-    /* MA messages configuration */
-    to_ma_length_ = 10;
-    from_ma_length_ = 30;
-
-    mutex_joystick_command_.lock();
-    {
-      joystick_command_.reserve(to_ma_length_);
-      joystick_command_.resize(to_ma_length_, 0.0);
-      joystick_command_[JoystickMA::TIME_VALIDITY] = joystick_command_time_validity_ms;
-    }
-    mutex_joystick_command_.unlock();
-
-    to_ma_vector_.reserve(to_ma_length_);
-    to_ma_vector_.resize(to_ma_length_, 0.0);
-
-    from_ma_vector_.reserve(from_ma_length_);
-    from_ma_vector_.resize(from_ma_length_, 0.0);
-
-    mutex_vilma_sensors_.lock();
-    {
-      sensors_ma_msg_.data.reserve(from_ma_length_ + 1);
-      sensors_ma_msg_.data.resize(from_ma_length_ + 1, 0.0);
-    }
-    mutex_vilma_sensors_.unlock();
-
-    mutex_vilma_state_.lock();
-    {
-      state_ma_msg_.data.reserve(from_ma_length_ + 1);
-      state_ma_msg_.data.resize(from_ma_length_ + 1, 0.0);
-    }
-    mutex_vilma_state_.unlock();
-
-    //* Configure UDP communication wih MA
-    bool udp_configure_response = ma_udp_client.configure(
-        pc_udp_port, ma_udp_port, ma_ip, boost::posix_time::millisec(udp_timeout_ms), to_ma_length_, from_ma_length_);
-
-    if (!udp_configure_response)
-    {
-      RCLCPP_ERROR(this->get_logger(), "UDP port of PC is not accessible");
-    }
-
-    //* Configure velocity controller
-    control_configuration.t = this->get_clock()->now().seconds();
-    mutex_velocity_controller_.lock();
-    {
-      velocity_controller_.configure(control_configuration);
-    }
-    mutex_velocity_controller_.unlock();
-
-    user_command_handler_ = TempConditionFilter(delay_to_user_command_ms_);
-
-    /// ROS2 entities
-
-    rclcpp::SubscriptionOptions autoware_sub_options;
-    rclcpp::SubscriptionOptions debug_sub_options;
-
-    timers_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
-
-    subscribers_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-
-    autoware_sub_options.callback_group = subscribers_callback_group_;
-
-    debug_sub_options.callback_group = subscribers_callback_group_;
-
-    ma_timer_ = this->create_wall_timer(std::chrono::milliseconds(ma_timer_period_ms_),
-                                        std::bind(&VilmaInterface::ma_timer_callback, this), timers_callback_group_);
-
-    ma_sleep_timer_ =
-        this->create_wall_timer(std::chrono::minutes(ma_sleep_period_min_),
-                                std::bind(&VilmaInterface::ma_sleep_callback, this), timers_callback_group_);
-
-    control_timer_ =
-        this->create_wall_timer(std::chrono::milliseconds(control_timer_period_ms_),
-                                std::bind(&VilmaInterface::control_timer_callback, this), timers_callback_group_);
-
-    //* Stopping ma_sleep_timer_
-    ma_sleep_timer_->cancel();
-    control_timer_->cancel();
-
-    //* Initialization of ma_timer_last_stamp_
-    ma_timer_last_stamp_ = this->get_clock()->now();
-
-    /* From Autoware */
-    control_cmd_sub_ = this->create_subscription<autoware_control_msgs::msg::Control>(
-        "/control/command/control_cmd", rclcpp::QoS{1}, std::bind(&VilmaInterface::control_cmd_callback, this, _1),
-        autoware_sub_options);
-
-    gear_cmd_sub_ = this->create_subscription<autoware_vehicle_msgs::msg::GearCommand>(
-        "/control/command/gear_cmd", rclcpp::QoS{1}, std::bind(&VilmaInterface::gear_cmd_callback, this, _1),
-        autoware_sub_options);
-
-    engage_sub_ = this->create_subscription<autoware_vehicle_msgs::msg::Engage>(
-        "/vehicle/engage", rclcpp::QoS{1}, std::bind(&VilmaInterface::engage_callback, this, _1), autoware_sub_options);
-
-    control_mode_request_server_ = this->create_service<autoware_vehicle_msgs::srv::ControlModeCommand>(
-        "/control/control_mode_request", std::bind(&VilmaInterface::control_mode_request_callback, this, _1, _2));
-
-    /* To Autoware */
-    control_mode_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::ControlModeReport>(
-        "/vehicle/status/control_mode", rclcpp::QoS{1});
-
-    gear_report_pub_ =
-        this->create_publisher<autoware_vehicle_msgs::msg::GearReport>("/vehicle/status/gear_status", rclcpp::QoS{1});
-
-    steering_report_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::SteeringReport>(
-        "/vehicle/status/steering_status", rclcpp::QoS{1});
-
-    velocity_report_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::VelocityReport>(
-        "/vehicle/status/velocity_status", rclcpp::QoS{1});
-
-    /* Debug topics */
-    joystick_ma_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
-        "/vilma_ma_debug/joystick_ma", rclcpp::QoS{1}, std::bind(&VilmaInterface::joystick_ma_callback, this, _1),
-        debug_sub_options);
-
-    state_ma_pub_ =
-        this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/state_ma", rclcpp::QoS{1});
-
-    sensors_ma_pub_ =
-        this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/sensors_ma", rclcpp::QoS{1});
-
-    /* HMI topics */
-
-    hmi_throttle_pub_ = this->create_publisher<std_msgs::msg::Float32>("/hmi/throttle", rclcpp::QoS{1});
-
-    hmi_braking_pub_ = this->create_publisher<std_msgs::msg::Float32>("/hmi/braking", rclcpp::QoS{1});
-
-    hmi_status_pub_ = this->create_publisher<std_msgs::msg::String>("/hmi/status", rclcpp::QoS{1});
-
-    set_control_mode(vilma_control_mode_);
+  if (!udp_configure_response)
+  {
+    RCLCPP_ERROR(this->get_logger(), "UDP port of PC is not accessible");
   }
 
-  /**
-   *
-   * @brief Class destructor
-   * @param
-   * @return
-   */
-  VilmaInterface::~VilmaInterface()
+  //* Configure velocity controller
+  control_configuration.t = this->get_clock()->now().seconds();
+  mutex_velocity_controller_.lock();
   {
-    //* Closing UDP communication with MA.
-    ma_udp_client.close_udp_socket();
+    velocity_controller_.configure(control_configuration);
+  }
+  mutex_velocity_controller_.unlock();
+
+  user_command_handler_ = TempConditionFilter(delay_to_user_command_ms_);
+
+  /// ROS2 entities
+
+  rclcpp::SubscriptionOptions autoware_sub_options;
+  rclcpp::SubscriptionOptions debug_sub_options;
+
+  timers_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+
+  subscribers_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
+  autoware_sub_options.callback_group = subscribers_callback_group_;
+
+  debug_sub_options.callback_group = subscribers_callback_group_;
+
+  ma_timer_ = this->create_wall_timer(std::chrono::milliseconds(ma_timer_period_ms_),
+                                      std::bind(&VilmaInterface::ma_timer_callback, this), timers_callback_group_);
+
+  ma_sleep_timer_ =
+      this->create_wall_timer(std::chrono::minutes(ma_sleep_period_min_),
+                              std::bind(&VilmaInterface::ma_sleep_callback, this), timers_callback_group_);
+
+  control_timer_ =
+      this->create_wall_timer(std::chrono::milliseconds(control_timer_period_ms_),
+                              std::bind(&VilmaInterface::control_timer_callback, this), timers_callback_group_);
+
+  //* Stopping ma_sleep_timer_
+  ma_sleep_timer_->cancel();
+  control_timer_->cancel();
+
+  //* Initialization of ma_timer_last_stamp_
+  ma_timer_last_stamp_ = this->get_clock()->now();
+
+  /* From Autoware */
+  control_cmd_sub_ = this->create_subscription<autoware_control_msgs::msg::Control>(
+      "/control/command/control_cmd", rclcpp::QoS{ 1 }, std::bind(&VilmaInterface::control_cmd_callback, this, _1),
+      autoware_sub_options);
+
+  gear_cmd_sub_ = this->create_subscription<autoware_vehicle_msgs::msg::GearCommand>(
+      "/control/command/gear_cmd", rclcpp::QoS{ 1 }, std::bind(&VilmaInterface::gear_cmd_callback, this, _1),
+      autoware_sub_options);
+
+  engage_sub_ = this->create_subscription<autoware_vehicle_msgs::msg::Engage>(
+      "/vehicle/engage", rclcpp::QoS{ 1 }, std::bind(&VilmaInterface::engage_callback, this, _1), autoware_sub_options);
+
+  control_mode_request_server_ = this->create_service<autoware_vehicle_msgs::srv::ControlModeCommand>(
+      "/control/control_mode_request", std::bind(&VilmaInterface::control_mode_request_callback, this, _1, _2));
+
+  /* To Autoware */
+  control_mode_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::ControlModeReport>(
+      "/vehicle/status/control_mode", rclcpp::QoS{ 1 });
+
+  gear_report_pub_ =
+      this->create_publisher<autoware_vehicle_msgs::msg::GearReport>("/vehicle/status/gear_status", rclcpp::QoS{ 1 });
+
+  steering_report_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::SteeringReport>(
+      "/vehicle/status/steering_status", rclcpp::QoS{ 1 });
+
+  velocity_report_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::VelocityReport>(
+      "/vehicle/status/velocity_status", rclcpp::QoS{ 1 });
+
+  /* Debug topics */
+  joystick_ma_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+      "/vilma_ma_debug/joystick_ma", rclcpp::QoS{ 1 }, std::bind(&VilmaInterface::joystick_ma_callback, this, _1),
+      debug_sub_options);
+
+  state_ma_pub_ =
+      this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/state_ma", rclcpp::QoS{ 1 });
+
+  sensors_ma_pub_ =
+      this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/sensors_ma", rclcpp::QoS{ 1 });
+
+  /* HMI topics */
+
+  hmi_throttle_pub_ = this->create_publisher<std_msgs::msg::Float32>("/hmi/throttle", rclcpp::QoS{ 1 });
+
+  hmi_braking_pub_ = this->create_publisher<std_msgs::msg::Float32>("/hmi/braking", rclcpp::QoS{ 1 });
+
+  hmi_status_pub_ = this->create_publisher<std_msgs::msg::String>("/hmi/status", rclcpp::QoS{ 1 });
+
+  set_control_mode(vilma_control_mode_);
+}
+
+/**
+ *
+ * @brief Class destructor
+ * @param
+ * @return
+ */
+VilmaInterface::~VilmaInterface()
+{
+  //* Closing UDP communication with MA.
+  ma_udp_client.close_udp_socket();
+}
+
+/**
+ *
+ * @brief Build vector with message data from Autoware to MA.
+ * @param None
+ * @return RX type value of the UDP message
+ */
+unsigned short VilmaInterface::to_ma()
+{
+  unsigned short rx_type;
+
+  //* Copying joystick_command_ to to_ma_vector_ protected by mutex
+  mutex_joystick_command_.lock();  /// Lock mutex to read shared variable joystick_command_
+  {
+    to_ma_vector_ = joystick_command_;
+    if (joystick_command_[JoystickMA::STEER_COMMAND] == JoystickMA::STEER_COMMAND_LOOK_ZERO)
+    {
+      joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
+    }
+  }
+  mutex_joystick_command_.unlock();  /// Unlock mutex
+
+  //* Checking if the to_ma_vector_ if new (stamp != 0.0)
+  if (to_ma_vector_[0] == 0.0)  /// If not new, just request MA data
+  {
+    rx_type = RxTypeMA::ONLY_RECEIVE_DATA;  /// Configuring UDP message to only request data
+
+    //* Overwriting to_ma_vector_ with ONLY_RECEIVE_DATA message
+    to_ma_vector_[0] = ma_operation_mode_;                  /// Setting ma_operation_mode_
+    to_ma_vector_[1] = this->get_clock()->now().seconds();  /// Setting stamp
+    to_ma_vector_[2] = 152;  /// ? I really don't know why this, copied from Olmer's code.
+    std::fill(to_ma_vector_.begin() + 3, to_ma_vector_.end(),
+              0.0);  /// Filling the remaining vector with zeros.
+
+    //* Debug logging
+    RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Only Receive Data Mode");
+  }
+  else  /// Else, request data and send Joystick command
+  {
+    rx_type = RxTypeMA::JOYSTICK_MODE_COMMAND;  // Configuring UDP message to joystick command
+
+    ma_operation_mode_ = OperationModeMA::JOYSTICK_MODE;  /// Set MA's operation mode to joystick indefinitely
+
+    //* Debug logging
+    RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Joystick Command Mode");
   }
 
-  /**
-   *
-   * @brief Build vector with message data from Autoware to MA.
-   * @param None
-   * @return RX type value of the UDP message
-   */
-  unsigned short VilmaInterface::to_ma()
+  //* Return PC to MA (RX) UDP message type
+  return rx_type;
+}
+
+/**
+ *
+ * @brief Process data received from MA through UDP.
+ * @param type_tx type of UDP message
+ * @param stamp time when the message was requested
+ * @return void
+ */
+void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
+{
+  //* Assembling header for messages
+  std_msgs::msg::Header header_msg;
+  header_msg.stamp = stamp;
+  header_msg.frame_id = std::string("base_link");
+
+  //* Verifying the type of UDP message received
+  switch (type_tx)
   {
-    unsigned short rx_type;
-
-    //* Copying joystick_command_ to to_ma_vector_ protected by mutex
-    mutex_joystick_command_.lock(); /// Lock mutex to read shared variable joystick_command_
-    {
-      to_ma_vector_ = joystick_command_;
-      if (joystick_command_[JoystickMA::STEER_COMMAND] == JoystickMA::STEER_COMMAND_LOOK_ZERO)
-      {
-        joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
-      }
-    }
-    mutex_joystick_command_.unlock(); /// Unlock mutex
-
-    //* Checking if the to_ma_vector_ if new (stamp != 0.0)
-    if (to_ma_vector_[0] == 0.0) /// If not new, just request MA data
-    {
-      rx_type = RxTypeMA::ONLY_RECEIVE_DATA; /// Configuring UDP message to only request data
-
-      //* Overwriting to_ma_vector_ with ONLY_RECEIVE_DATA message
-      to_ma_vector_[0] = ma_operation_mode_;                 /// Setting ma_operation_mode_
-      to_ma_vector_[1] = this->get_clock()->now().seconds(); /// Setting stamp
-      to_ma_vector_[2] = 152;                                /// ? I really don't know why this, copied from Olmer's code.
-      std::fill(to_ma_vector_.begin() + 3, to_ma_vector_.end(),
-                0.0); /// Filling the remaining vector with zeros.
-
-      //* Debug logging
-      RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Only Receive Data Mode");
-    }
-    else /// Else, request data and send Joystick command
-    {
-      rx_type = RxTypeMA::JOYSTICK_MODE_COMMAND; // Configuring UDP message to joystick command
-
-      ma_operation_mode_ = OperationModeMA::JOYSTICK_MODE; /// Set MA's operation mode to joystick indefinitely
-
-      //* Debug logging
-      RCLCPP_DEBUG(this->get_logger(), "PC -> MA | Joystick Command Mode");
-    }
-
-    //* Return PC to MA (RX) UDP message type
-    return rx_type;
-  }
-
-  /**
-   *
-   * @brief Process data received from MA through UDP.
-   * @param type_tx type of UDP message
-   * @param stamp time when the message was requested
-   * @return void
-   */
-  void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
-  {
-    //* Assembling header for messages
-    std_msgs::msg::Header header_msg;
-    header_msg.stamp = stamp;
-    header_msg.frame_id = std::string("base_link");
-
-    //* Verifying the type of UDP message received
-    switch (type_tx)
-    {
     //* Vehicle sensors information
-    case TxTypeMA::SENSORS_MA:
-    {
+    case TxTypeMA::SENSORS_MA: {
       mutex_vilma_sensors_.lock();
       {
         //* Publishing debug topic
@@ -352,10 +351,10 @@ namespace vilma
             RXOperationModeMA::INITIAL_STATE_MODE)
         {
           set_control_mode(AutowareControlMode::MANUAL);
-          
-            auto msg = std_msgs::msg::String();
-            msg.data = "MA is initializing...";
-            hmi_status_pub_->publish(msg);
+
+          auto msg = std_msgs::msg::String();
+          msg.data = "MA is initializing...";
+          hmi_status_pub_->publish(msg);
         }
 
         if (sensors_ma_msg_.data[SensorsMA::TIME_PCC_BRAKE] == -1.0)
@@ -370,8 +369,6 @@ namespace vilma
           }
 
           RCLCPP_FATAL(this->get_logger(), "Connection with brake ECU lost.");
-
-          break;
         }
 
         //* Verify that the user brake pedal was pressed | Emergency -- User braking
@@ -439,25 +436,25 @@ namespace vilma
           //* Selecting Autoware's gear option from sensors MA gear state
           switch (static_cast<int>(sensors_ma_msg_.data[SensorsMA::GEAR_STATE]))
           {
-          case SensorsMA::GEAR_OFF:
-            gear_report_msg.report = AutowareGearReport::NONE;
-            break;
+            case SensorsMA::GEAR_OFF:
+              gear_report_msg.report = AutowareGearReport::NONE;
+              break;
 
-          case SensorsMA::GEAR_D:
-            gear_report_msg.report = AutowareGearReport::DRIVE;
-            break;
+            case SensorsMA::GEAR_D:
+              gear_report_msg.report = AutowareGearReport::DRIVE;
+              break;
 
-          case SensorsMA::GEAR_R:
-            gear_report_msg.report = AutowareGearReport::REVERSE;
-            break;
+            case SensorsMA::GEAR_R:
+              gear_report_msg.report = AutowareGearReport::REVERSE;
+              break;
 
-          case SensorsMA::GEAR_N:
-            gear_report_msg.report = AutowareGearReport::NEUTRAL;
-            break;
+            case SensorsMA::GEAR_N:
+              gear_report_msg.report = AutowareGearReport::NEUTRAL;
+              break;
 
-          default:
-            RCLCPP_ERROR(this->get_logger(), "Unknown gear status.");
-            break;
+            default:
+              RCLCPP_ERROR(this->get_logger(), "Unknown gear status.");
+              break;
           }
 
           gear_report_pub_->publish(gear_report_msg);
@@ -487,8 +484,7 @@ namespace vilma
     }
 
     //* Vehicle state information
-    case TxTypeMA::STATE_MA:
-    {
+    case TxTypeMA::STATE_MA: {
       mutex_vilma_state_.lock();
       {
         //* Publish debug topic
@@ -531,47 +527,47 @@ namespace vilma
       RCLCPP_ERROR(this->get_logger(), "Unknown UDP TX message type.");
 
       break;
-    }
   }
+}
 
-  // TODO
-  /**
-   * @brief
-   *
-   * @param operation_state_value
-   * @return int
-   */
-  int VilmaInterface::get_operation_state(int operation_state_value)
+// TODO
+/**
+ * @brief
+ *
+ * @param operation_state_value
+ * @return int
+ */
+int VilmaInterface::get_operation_state(int operation_state_value)
+{
+  // Value	bit			description
+  // 1	    0			Emergency state
+  // 2	    1			initial state
+  // 4	    2			manual state
+  // 8	    3			Joystick state
+  // 16	    4			Automatic state
+  // 32	    5			ADAS State
+
+  return (operation_state_value & 0b111111);
+}
+
+/**
+ *
+ * @brief Change vehicle control mode configuring the command values in the joystick message.
+ * @param control_mode desired control mode in autoware_vehicle_msgs::msg::ControlModeReport
+ * constants format.
+ * @return feedback of success or fail in change control mode.
+ */
+bool VilmaInterface::set_control_mode(uint8_t control_mode)
+{
+  bool success = false;  // Return of the command mode change
+
+  //* Check if changing control mode is permitted
   {
-    // Value	bit			description
-    // 1	    0			Emergency state
-    // 2	    1			initial state
-    // 4	    2			manual state
-    // 8	    3			Joystick state
-    // 16	    4			Automatic state
-    // 32	    5			ADAS State
-
-    return (operation_state_value & 0b111111);
-  }
-
-  /**
-   *
-   * @brief Change vehicle control mode configuring the command values in the joystick message.
-   * @param control_mode desired control mode in autoware_vehicle_msgs::msg::ControlModeReport
-   * constants format.
-   * @return feedback of success or fail in change control mode.
-   */
-  bool VilmaInterface::set_control_mode(uint8_t control_mode)
-  {
-    bool success = false; // Return of the command mode change
-
-    //* Check if changing control mode is permitted
+    if (change_control_mode_enabled_.load())  /// If yes
     {
-      if (change_control_mode_enabled_.load()) /// If yes
+      //* Select the desired new control mode
+      switch (control_mode)
       {
-        //* Select the desired new control mode
-        switch (control_mode)
-        {
         //* Manual mode
         case AutowareControlMode::MANUAL:
 
@@ -593,7 +589,7 @@ namespace vilma
             //* Set brake command in manual mode
             joystick_command_[JoystickMA::BRAKE_COMMAND] = JoystickMA::BRAKE_COMMAND_OFF;
           }
-          mutex_joystick_command_.unlock(); /// Unlock mutex
+          mutex_joystick_command_.unlock();  /// Unlock mutex
 
           //* Update vehicle control mode to Autoware report
           vilma_control_mode_.store(AutowareControlMode::MANUAL);
@@ -624,9 +620,9 @@ namespace vilma
             joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
 
             //* Avoid send old steer value
-              joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(vilma_steer_tire_angle_.load());
+            joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(vilma_steer_tire_angle_.load());
           }
-          mutex_joystick_command_.unlock(); /// Unlock mutex
+          mutex_joystick_command_.unlock();  /// Unlock mutex
 
           //* Update vehicle control mode to Autoware report
           vilma_control_mode_.store(AutowareControlMode::AUTONOMOUS);
@@ -661,9 +657,9 @@ namespace vilma
             joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
 
             //* Avoid send old steer value
-              joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(vilma_steer_tire_angle_.load());
+            joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(vilma_steer_tire_angle_.load());
           }
-          mutex_joystick_command_.unlock(); /// Unlock mutex
+          mutex_joystick_command_.unlock();  /// Unlock mutex
 
           //* Update vehicle control mode to Autoware report
           vilma_control_mode_.store(AutowareControlMode::AUTONOMOUS_STEER_ONLY);
@@ -694,7 +690,7 @@ namespace vilma
             //* Set steer command in manual mode
             joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
           }
-          mutex_joystick_command_.unlock(); /// Unlock mutex
+          mutex_joystick_command_.unlock();  /// Unlock mutex
 
           //* Update vehicle control mode to Autoware report
           vilma_control_mode_.store(AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY);
@@ -735,7 +731,7 @@ namespace vilma
             //* Set brake command in manual mode
             joystick_command_[JoystickMA::BRAKE_COMMAND] = JoystickMA::BRAKE_COMMAND_OFF;
           }
-          mutex_joystick_command_.unlock(); /// Unlock mutex
+          mutex_joystick_command_.unlock();  /// Unlock mutex
 
           //* Update vehicle control mode to Autoware report
           vilma_control_mode_.store(AutowareControlMode::NOT_READY);
@@ -750,241 +746,241 @@ namespace vilma
         default:
           RCLCPP_ERROR(this->get_logger(), "Unkown Autoware control mode.");
           break;
-        }
+      }
 
-        //* Return successful control mode changing
-        success = true;
-      }
-      else /// If changing control mode is blocked
-      {
-        //* Return unsuccessful control mode changing
-        RCLCPP_WARN(this->get_logger(), "Control Mode change blocked!");
-        success = false;
-      }
+      //* Return successful control mode changing
+      success = true;
     }
-
-    return success;
+    else  /// If changing control mode is blocked
+    {
+      //* Return unsuccessful control mode changing
+      RCLCPP_WARN(this->get_logger(), "Control Mode change blocked!");
+      success = false;
+    }
   }
 
-  /**
-   *
-   * @brief Timer callback that make the UDP request to MA, sending and receiving data.
-   * @param None
-   * @return void
-   */
-  void VilmaInterface::ma_timer_callback()
+  return success;
+}
+
+/**
+ *
+ * @brief Timer callback that make the UDP request to MA, sending and receiving data.
+ * @param None
+ * @return void
+ */
+void VilmaInterface::ma_timer_callback()
+{
+  //* If last timer still running, abort call
+  if (!mutex_ma_timer_.try_lock())
   {
-    //* If last timer still running, abort call
-    if (!mutex_ma_timer_.try_lock())
-    {
-      return;
-    }
-
-    //* Update callback calling stamp
-    rclcpp::Time stamp = this->get_clock()->now();
-
-    //* Get duration since last call
-    rclcpp::Duration ma_timer_dt = stamp - ma_timer_last_stamp_;
-
-    //* Update last call stamp
-    ma_timer_last_stamp_ = stamp;
-
-    //* Get UDP message PC to MA type (RX)
-    unsigned short rx_type = to_ma();
-
-    //* Initialize UDP message MA to PC type (TX)
-    unsigned short tx_type = 32768;
-
-    //* Send UDP request to MA
-    std::string udp_request_output =
-        ma_udp_client.ma_udp_request(&from_ma_vector_[0], &tx_type, &to_ma_vector_[0], rx_type);
-
-    //* Process request output
-    if (udp_request_output.empty()) /// Successful request (no errors reported)
-    {
-      //* Process received data
-      from_ma(tx_type, stamp);
-
-      //* Clear stamp to flag the message as successfully sent
-      mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
-      {
-        // If joystick command was the sent one, the stamp is resetted to avoid send the same message
-        // again.
-        joystick_command_[0] = (joystick_command_[0] == to_ma_vector_[0]) ? 0.0 : joystick_command_[0];
-      }
-      mutex_joystick_command_.unlock(); /// Unlock mutex
-
-      //* Logging one time per second the MA period and delay.
-      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MA period: %f | MA delay: %f",
-                           ma_timer_dt.seconds(), (ma_timer_dt.seconds() - ma_timer_period_ms_ * 1e-3));
-    }
-    else /// Error occurred
-    {
-      //* Print some errors
-      if (ma_udp_client.get_udp_error() < 12) /// Print 10 first errors
-      {
-        RCLCPP_ERROR(this->get_logger(), "%s", udp_request_output.c_str());
-      }
-
-      //* If were so much errors, wait some time to reconnect
-      else if (ma_udp_client.get_udp_error() > 1000) /// Sleep UDP for some time and reconnect
-      {
-        //* Stop ma_timer_
-        ma_timer_->cancel();
-
-        //* Start ma_sleep_timer_
-        ma_sleep_timer_->reset();
-
-        RCLCPP_WARN(this->get_logger(), "Suspending MA communication. Waiting %d minutes to reconnect to MA...",
-                    ma_sleep_period_min_);
-      }
-    }
-
-    //* Logging the time lapsed since callback call (must be smaller then period)
-    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MA timer loop time: %f ms",
-                         (this->get_clock()->now().nanoseconds() - stamp.nanoseconds()) * 1e-6);
-
-    mutex_ma_timer_.unlock();
+    return;
   }
 
-  /**
-   *
-   * @brief Timer callback for wait some time to reconnect MA UDP communication.
-   * @param None
-   * @return void
-   */
-  void VilmaInterface::ma_sleep_callback()
+  //* Update callback calling stamp
+  rclcpp::Time stamp = this->get_clock()->now();
+
+  //* Get duration since last call
+  rclcpp::Duration ma_timer_dt = stamp - ma_timer_last_stamp_;
+
+  //* Update last call stamp
+  ma_timer_last_stamp_ = stamp;
+
+  //* Get UDP message PC to MA type (RX)
+  unsigned short rx_type = to_ma();
+
+  //* Initialize UDP message MA to PC type (TX)
+  unsigned short tx_type = 32768;
+
+  //* Send UDP request to MA
+  std::string udp_request_output =
+      ma_udp_client.ma_udp_request(&from_ma_vector_[0], &tx_type, &to_ma_vector_[0], rx_type);
+
+  //* Process request output
+  if (udp_request_output.empty())  /// Successful request (no errors reported)
   {
-    /// This callback was called some time after ma_timer_ was disabled
+    //* Process received data
+    from_ma(tx_type, stamp);
 
-    //* Try to open UDP socket
-    if (ma_udp_client.open_udp_socket())
+    //* Clear stamp to flag the message as successfully sent
+    mutex_joystick_command_.lock();  /// Lock mutex to update shared variable joystick_command_
     {
-      RCLCPP_INFO(this->get_logger(), "Socket opened to reconnect to MA.");
+      // If joystick command was the sent one, the stamp is resetted to avoid send the same message
+      // again.
+      joystick_command_[0] = (joystick_command_[0] == to_ma_vector_[0]) ? 0.0 : joystick_command_[0];
     }
-    else
+    mutex_joystick_command_.unlock();  /// Unlock mutex
+
+    //* Logging one time per second the MA period and delay.
+    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MA period: %f | MA delay: %f",
+                         ma_timer_dt.seconds(), (ma_timer_dt.seconds() - ma_timer_period_ms_ * 1e-3));
+  }
+  else  /// Error occurred
+  {
+    //* Print some errors
+    if (ma_udp_client.get_udp_error() < 12)  /// Print 10 first errors
     {
-      RCLCPP_ERROR(this->get_logger(), "Error to open socket.");
+      RCLCPP_ERROR(this->get_logger(), "%s", udp_request_output.c_str());
     }
 
-    //* Disable ma_sleep_timer_
-    ma_sleep_timer_->cancel();
+    //* If were so much errors, wait some time to reconnect
+    else if (ma_udp_client.get_udp_error() > 1000)  /// Sleep UDP for some time and reconnect
+    {
+      //* Stop ma_timer_
+      ma_timer_->cancel();
 
-    //* Enable ma_timer_ to reconnect to MA through UDP
-    ma_timer_->reset();
+      //* Start ma_sleep_timer_
+      ma_sleep_timer_->reset();
 
-    RCLCPP_INFO(this->get_logger(), "MA communication reactivated.");
+      RCLCPP_WARN(this->get_logger(), "Suspending MA communication. Waiting %d minutes to reconnect to MA...",
+                  ma_sleep_period_min_);
+    }
   }
 
-  /**
-   *
-   * @brief
-   * @param None
-   * @return void
-   */
-  void VilmaInterface::control_timer_callback()
+  //* Logging the time lapsed since callback call (must be smaller then period)
+  RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MA timer loop time: %f ms",
+                       (this->get_clock()->now().nanoseconds() - stamp.nanoseconds()) * 1e-6);
+
+  mutex_ma_timer_.unlock();
+}
+
+/**
+ *
+ * @brief Timer callback for wait some time to reconnect MA UDP communication.
+ * @param None
+ * @return void
+ */
+void VilmaInterface::ma_sleep_callback()
+{
+  /// This callback was called some time after ma_timer_ was disabled
+
+  //* Try to open UDP socket
+  if (ma_udp_client.open_udp_socket())
   {
-    //* Creating gas and brake value variables
-    LongActuationCommand control_action;
+    RCLCPP_INFO(this->get_logger(), "Socket opened to reconnect to MA.");
+  }
+  else
+  {
+    RCLCPP_ERROR(this->get_logger(), "Error to open socket.");
+  }
 
-    //* Creating brake command variable initialized in manual braking
-    /// By-Wire Braking is only enabled when autonomous braking is needed
-    control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
+  //* Disable ma_sleep_timer_
+  ma_sleep_timer_->cancel();
 
-    /// Lock mutex to read and update shared variable joystick_command_
-    mutex_joystick_command_.lock();
+  //* Enable ma_timer_ to reconnect to MA through UDP
+  ma_timer_->reset();
+
+  RCLCPP_INFO(this->get_logger(), "MA communication reactivated.");
+}
+
+/**
+ *
+ * @brief
+ * @param None
+ * @return void
+ */
+void VilmaInterface::control_timer_callback()
+{
+  //* Creating gas and brake value variables
+  LongActuationCommand control_action;
+
+  //* Creating brake command variable initialized in manual braking
+  /// By-Wire Braking is only enabled when autonomous braking is needed
+  control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_OFF);
+
+  /// Lock mutex to read and update shared variable joystick_command_
+  mutex_joystick_command_.lock();
+  {
+    if (joystick_command_[JoystickMA::GAS_COMMAND] == JoystickMA::GAS_COMMAND_POSITION)
     {
-      if (joystick_command_[JoystickMA::GAS_COMMAND] == JoystickMA::GAS_COMMAND_POSITION)
+      //* Computing control action from current speed and speed reference
+      mutex_velocity_controller_.lock();
       {
-        //* Computing control action from current speed and speed reference
-        mutex_velocity_controller_.lock();
-        {
-          velocity_controller_.calculate(control_action, vilma_longitudinal_speed_.load(),
-                                         this->get_clock()->now().nanoseconds());
-        }
-        mutex_velocity_controller_.unlock();
+        velocity_controller_.calculate(control_action, vilma_longitudinal_speed_.load(),
+                                       this->get_clock()->now().nanoseconds());
       }
-
-      //* Assign steer value received in msg, gas value and brake data in joystick command
-      //* Stamp to flag as a new data
-      joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
-
-      //* Assign gas value
-      joystick_command_[JoystickMA::GAS_VALUE] = control_action.gas_value;
-
-      //* Assign brake command and value
-      joystick_command_[JoystickMA::BRAKE_COMMAND] = control_action.brake_command;
-      joystick_command_[JoystickMA::BRAKE_VALUE] = control_action.brake_value;
+      mutex_velocity_controller_.unlock();
     }
-    mutex_joystick_command_.unlock(); /// Unlock mutex
-
-    //* Printing throttling and braking in the HMI
-    std_msgs::msg::Float32 throttle_value_hmi;
-    std_msgs::msg::Float32 braking_value_hmi;
-
-    throttle_value_hmi.data = control_action.gas_value * 100.0;
-    braking_value_hmi.data = control_action.brake_value * 100.0;
-
-    hmi_throttle_pub_->publish(throttle_value_hmi);
-    hmi_braking_pub_->publish(braking_value_hmi);
-  }
-
-  /**
-   *
-   * @brief Return steering normalized value [-1, 1] for a steering tire angle value;
-   * @param steering_tire_angle_rad Steering tire angle in radians
-   * @return Normalized value for the desired angle
-   */
-  double VilmaInterface::get_steering_value(double steering_tire_angle_rad)
-  {
-    //* Get normalized steering value
-    return steering_tire_angle_rad / max_steering_tire_angle_rad_;
-  }
-
-  /**
-   *
-   * @brief Receive the control reference for lateral and longitudinal control and process the
-   * steering, gas and brake values, applying low-level controller to longitudinal velocity.
-   * @param msg Ackermann control topic message
-   * @return void
-   */
-  void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
-  {
-    mutex_velocity_controller_.lock();
-    {
-      velocity_controller_.setReference(msg->longitudinal.velocity);
-    }
-    mutex_velocity_controller_.unlock();
 
     //* Assign steer value received in msg, gas value and brake data in joystick command
-    mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
-    {
-      //* Stamp to flag as a new data
-      joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+    //* Stamp to flag as a new data
+    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-      //* Assign steering angle received from Autoware normalized by get_steering_value
-      joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(msg->lateral.steering_tire_angle);
-    }
-    mutex_joystick_command_.unlock(); /// Unlock mutex
+    //* Assign gas value
+    joystick_command_[JoystickMA::GAS_VALUE] = control_action.gas_value;
+
+    //* Assign brake command and value
+    joystick_command_[JoystickMA::BRAKE_COMMAND] = control_action.brake_command;
+    joystick_command_[JoystickMA::BRAKE_VALUE] = control_action.brake_value;
   }
+  mutex_joystick_command_.unlock();  /// Unlock mutex
 
-  /**
-   *
-   * @brief Receive gear command and process the request in joystick command vector.
-   * @param msg gear command received by topic.
-   * @return void
-   */
-  void VilmaInterface::gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg)
+  //* Printing throttling and braking in the HMI
+  std_msgs::msg::Float32 throttle_value_hmi;
+  std_msgs::msg::Float32 braking_value_hmi;
+
+  throttle_value_hmi.data = control_action.gas_value * 100.0;
+  braking_value_hmi.data = control_action.brake_value * 100.0;
+
+  hmi_throttle_pub_->publish(throttle_value_hmi);
+  hmi_braking_pub_->publish(braking_value_hmi);
+}
+
+/**
+ *
+ * @brief Return steering normalized value [-1, 1] for a steering tire angle value;
+ * @param steering_tire_angle_rad Steering tire angle in radians
+ * @return Normalized value for the desired angle
+ */
+double VilmaInterface::get_steering_value(double steering_tire_angle_rad)
+{
+  //* Get normalized steering value
+  return steering_tire_angle_rad / max_steering_tire_angle_rad_;
+}
+
+/**
+ *
+ * @brief Receive the control reference for lateral and longitudinal control and process the
+ * steering, gas and brake values, applying low-level controller to longitudinal velocity.
+ * @param msg Ackermann control topic message
+ * @return void
+ */
+void VilmaInterface::control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg)
+{
+  mutex_velocity_controller_.lock();
   {
-    //* Check if autonomous shift is enabled
-    if (autonomous_shift_enable_) // If is
+    velocity_controller_.setReference(msg->longitudinal.velocity);
+  }
+  mutex_velocity_controller_.unlock();
+
+  //* Assign steer value received in msg, gas value and brake data in joystick command
+  mutex_joystick_command_.lock();  /// Lock mutex to update shared variable joystick_command_
+  {
+    //* Stamp to flag as a new data
+    joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+
+    //* Assign steering angle received from Autoware normalized by get_steering_value
+    joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(msg->lateral.steering_tire_angle);
+  }
+  mutex_joystick_command_.unlock();  /// Unlock mutex
+}
+
+/**
+ *
+ * @brief Receive gear command and process the request in joystick command vector.
+ * @param msg gear command received by topic.
+ * @return void
+ */
+void VilmaInterface::gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg)
+{
+  //* Check if autonomous shift is enabled
+  if (autonomous_shift_enable_)  // If is
+  {
+    //* Select new gear from Autoware command
+    switch (msg->command)
     {
-      //* Select new gear from Autoware command
-      switch (msg->command)
-      {
       case AutowareGearCommand::NEUTRAL:
 
-        mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+        mutex_joystick_command_.lock();  /// Lock mutex to update shared variable joystick_command_
         {
           //* Stamp to flag as a new data
           joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
@@ -992,13 +988,13 @@ namespace vilma
           //* Assign gear state to neutral
           joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_NEUTRAL;
         }
-        mutex_joystick_command_.unlock(); /// Unlock mutex
+        mutex_joystick_command_.unlock();  /// Unlock mutex
 
         break;
 
       case AutowareGearCommand::REVERSE:
 
-        mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+        mutex_joystick_command_.lock();  /// Lock mutex to update shared variable joystick_command_
         {
           //* Stamp to flag as a new data
           joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
@@ -1006,13 +1002,13 @@ namespace vilma
           //* Assign gear state to reverse
           joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_REVERSE;
         }
-        mutex_joystick_command_.unlock(); /// Unlock mutex
+        mutex_joystick_command_.unlock();  /// Unlock mutex
 
         break;
 
       case AutowareGearCommand::DRIVE:
 
-        mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
+        mutex_joystick_command_.lock();  /// Lock mutex to update shared variable joystick_command_
         {
           //* Stamp to flag as a new data
           joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
@@ -1020,77 +1016,77 @@ namespace vilma
           //* Assign gear state to drive
           joystick_command_[JoystickMA::GEAR_STATE] = JoystickMA::GEAR_COMMAND_DRIVE;
         }
-        mutex_joystick_command_.unlock(); /// Unlock mutex
+        mutex_joystick_command_.unlock();  /// Unlock mutex
 
         break;
 
       default:
         RCLCPP_ERROR(this->get_logger(), "Unknown gear request.");
         break;
-      }
     }
   }
+}
 
-  /**
-   *
-   * @brief Receive engage topic, switching control mode to manual ou auto.
-   * @param msg Engage topic message.
-   * @return void
-   */
-  void VilmaInterface::engage_callback(const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr msg)
+/**
+ *
+ * @brief Receive engage topic, switching control mode to manual ou auto.
+ * @param msg Engage topic message.
+ * @return void
+ */
+void VilmaInterface::engage_callback(const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr msg)
+{
+  RCLCPP_WARN(this->get_logger(), "Engage request.");
+
+  //* Select control mode from engage message (engage or not engage)
+  if (msg->engage)  /// Engage Autoware (fully autonomous mode)
   {
-    RCLCPP_WARN(this->get_logger(), "Engage request.");
-
-    //* Select control mode from engage message (engage or not engage)
-    if (msg->engage) /// Engage Autoware (fully autonomous mode)
-    {
-      //* Request change control mode to AUTONOMOUS
-      set_control_mode(AutowareControlMode::AUTONOMOUS);
-    }
-    else /// Disengage Autoware (manual mode)
-    {
-      //* Request change control mode to MANUAL
-      set_control_mode(AutowareControlMode::MANUAL);
-    }
+    //* Request change control mode to AUTONOMOUS
+    set_control_mode(AutowareControlMode::AUTONOMOUS);
   }
-
-  /**
-   *
-   * @brief Change control mode service server.
-   * @param request required control mode.
-   * @param response feedback of success in change control mode.
-   * @return void
-   */
-  void VilmaInterface::control_mode_request_callback(
-      const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
-      const autoware_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response)
+  else  /// Disengage Autoware (manual mode)
   {
-    //* Request change control mode to Autoware mode requested and assign
-    //* the response status to service request answer
-
-    RCLCPP_WARN(this->get_logger(), "Change mode requested.");
-
-    response->success = set_control_mode(request->mode);
+    //* Request change control mode to MANUAL
+    set_control_mode(AutowareControlMode::MANUAL);
   }
+}
 
-  /**
-   *
-   * @brief Receive joystick command topic and process to be sended to MA.
-   * @param msg JoystickMA message
-   * @return void
-   */
-  void VilmaInterface::joystick_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg)
+/**
+ *
+ * @brief Change control mode service server.
+ * @param request required control mode.
+ * @param response feedback of success in change control mode.
+ * @return void
+ */
+void VilmaInterface::control_mode_request_callback(
+    const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
+    const autoware_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response)
+{
+  //* Request change control mode to Autoware mode requested and assign
+  //* the response status to service request answer
+
+  RCLCPP_WARN(this->get_logger(), "Change mode requested.");
+
+  response->success = set_control_mode(request->mode);
+}
+
+/**
+ *
+ * @brief Receive joystick command topic and process to be sended to MA.
+ * @param msg JoystickMA message
+ * @return void
+ */
+void VilmaInterface::joystick_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg)
+{
+  if (change_control_mode_enabled_.load())  /// Just accept debug input if control change mode is
+                                            /// enabled.
   {
-    if (change_control_mode_enabled_.load()) /// Just accept debug input if control change mode is
-                                             /// enabled.
+    mutex_joystick_command_.lock();  /// Lock mutex to update shared variable joystick_command_
     {
-      mutex_joystick_command_.lock(); /// Lock mutex to update shared variable joystick_command_
-      {
-        //* Assign joystick message received by debug topic to joystick command vector
-        joystick_command_ = msg->data;
-      }
-      mutex_joystick_command_.unlock(); /// Unlock mutex}
+      //* Assign joystick message received by debug topic to joystick command vector
+      joystick_command_ = msg->data;
     }
+    mutex_joystick_command_.unlock();  /// Unlock mutex}
   }
+}
 
-} // namespace vilma
+}  // namespace vilma
