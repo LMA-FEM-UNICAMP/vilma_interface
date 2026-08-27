@@ -176,6 +176,8 @@ namespace vilma
     mutex_velocity_controller_.unlock();
 
     user_command_handler_ = TempConditionFilter(delay_to_user_command_ms_);
+    steer_stopped_ = TempConditionFilter(1000);       /// 1 second stopped
+    lost_ecu_connection_ = TempConditionFilter(2500); // TODO add parameter and check delay
 
     /// ROS2 entities
 
@@ -287,6 +289,10 @@ namespace vilma
       if (joystick_command_[JoystickMA::STEER_COMMAND] == JoystickMA::STEER_COMMAND_LOOK_ZERO)
       {
         joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
+        if (steer_stopped_.trig(vilma_steer_tire_speed_.load() == 0.0))
+        {
+          set_control_mode(AutowareControlMode::MANUAL);
+        }
       }
     }
     mutex_joystick_command_.unlock(); /// Unlock mutex
@@ -364,12 +370,25 @@ namespace vilma
           {
             //* Change control mode to manual
             set_control_mode(AutowareControlMode::MANUAL);
-            auto msg = std_msgs::msg::String();
-            msg.data = "Connection with brake ECU lost!";
-            hmi_status_pub_->publish(msg);
           }
 
           RCLCPP_FATAL(this->get_logger(), "Connection with brake ECU lost.");
+          auto msg = std_msgs::msg::String();
+          msg.data = "Connection with brake ECU lost!";
+          hmi_status_pub_->publish(msg);
+        }
+
+        if (lost_ecu_connection_.trig(sensors_ma_msg_.data[SensorsMA::TIME_PCC_BRAKE] == -1.0))
+        {
+          if (AutowareControlMode::AUTONOMOUS_STEER_ONLY)
+          {
+            //* Change control mode to manual
+            set_control_mode(AutowareControlMode::MANUAL);
+          }
+          RCLCPP_FATAL(this->get_logger(), "Please restart the vehicle! Connection with brake ECU lost for more then 5 seconds.");
+          auto msg = std_msgs::msg::String();
+          msg.data = "Please restart the vehicle! Connection with brake ECU lost!";
+          hmi_status_pub_->publish(msg);
         }
 
         //* Verify that the user brake pedal was pressed | Emergency -- User braking
@@ -420,6 +439,8 @@ namespace vilma
           steering_report_pub_->publish(steering_report_msg);
 
           vilma_steer_tire_angle_.store(steering_tire_angle_rad);
+
+          vilma_steer_tire_speed_.store(sensors_ma_msg_.data[SensorsMA::STEER_SPEED] / 19.2895184102108);
         }
         else
         {
@@ -505,7 +526,7 @@ namespace vilma
 
           velocity_report_pub_->publish(velocity_report_msg);
 
-          vilma_steer_tire_angle_.store(state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED]);
+          vilma_longitudinal_speed_.store(state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED]);
         }
 
         //* Publish control mode report topic to Autoware

@@ -34,7 +34,7 @@ public:
     constexpr static int TIME_PPC = 1;
     constexpr static int OPERATION_STATE = 2;
     constexpr static int STEER_POS = 3;
-    constexpr static int SPEER_SPEED = 4;
+    constexpr static int STEER_SPEED = 4;
     constexpr static int STEER_STATE = 5;
     constexpr static int STEER_VM = 6;
     constexpr static int STEER_T_USER = 7;

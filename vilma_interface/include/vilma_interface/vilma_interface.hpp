@@ -117,6 +117,7 @@ namespace vilma
         int ma_operation_mode_;
         std::atomic<uint8_t> vilma_control_mode_;
         std::atomic<double> vilma_steer_tire_angle_;
+        std::atomic<double> vilma_steer_tire_speed_;
         std::atomic<double> vilma_longitudinal_speed_;
         std::atomic<bool> change_control_mode_enabled_;
         PIDLMA velocity_controller_;
@@ -128,6 +129,8 @@ namespace vilma
         bool autonomous_shift_enable_;
         double delay_to_user_command_ms_;
         TempConditionFilter user_command_handler_;
+        TempConditionFilter steer_stopped_;
+        TempConditionFilter lost_ecu_connection_;
 
         /* Command validation */
         int autoware_command_time_validity_ms_;
