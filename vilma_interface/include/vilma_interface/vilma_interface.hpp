@@ -45,6 +45,7 @@
 
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/float32.hpp"
+#include "std_msgs/msg/u_int8.hpp"
 #include "std_msgs/msg/header.hpp"
 #include "std_msgs/msg/string.hpp"
 
@@ -68,6 +69,15 @@
 
 namespace vilma
 {
+
+    class BeepOptions
+{
+public:
+    constexpr static uint NONE = 0;
+    constexpr static uint OK = 1;
+    constexpr static uint ALERT = 2;
+    constexpr static uint EMERGENCY = 3;
+};
 
     class VilmaInterface : public rclcpp::Node
     {
@@ -227,6 +237,9 @@ namespace vilma
         rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_throttle_pub_;
         rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_braking_pub_;
         rclcpp::Publisher<std_msgs::msg::String>::SharedPtr hmi_status_pub_;
+        rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr hmi_beep_pub_;
+
+        void hmi_beep(const u_int8_t beep_option);
     };
 
 } // namespace vilma
