@@ -370,6 +370,11 @@ namespace vilma
           {
             //* Change control mode to manual
             set_control_mode(AutowareControlMode::MANUAL);
+            auto msg = std_msgs::msg::String();
+            msg.data = "Connection with brake ECU lost!";
+            hmi_status_pub_->publish(msg);
+            
+            hmi_beep(BeepOptions::ALERT);
           }
 
           RCLCPP_FATAL(this->get_logger(), "Connection with brake ECU lost.");
@@ -403,6 +408,8 @@ namespace vilma
 
             //* Block control mode changing
             change_control_mode_enabled_.store(false);
+
+            hmi_beep(BeepOptions::EMERGENCY);
 
             RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
                                  "Control Mode changed to MANUAL by user braking.");
@@ -448,6 +455,7 @@ namespace vilma
                        "Steering tire angle value out of limits! Please perform steering zero calibration!");
           //! Removed because of steering peak on start
           // set_control_mode(AutowareControlMode::MANUAL);
+          hmi_beep(BeepOptions::ALERT);
         }
 
         //* Publish gear status topic to Autoware
@@ -1067,16 +1075,23 @@ void VilmaInterface::engage_callback(const autoware_vehicle_msgs::msg::Engage::C
 {
   RCLCPP_WARN(this->get_logger(), "Engage request.");
 
+  bool success = false;
+
   //* Select control mode from engage message (engage or not engage)
   if (msg->engage) /// Engage Autoware (fully autonomous mode)
   {
     //* Request change control mode to AUTONOMOUS
-    set_control_mode(AutowareControlMode::AUTONOMOUS);
+    success = set_control_mode(AutowareControlMode::AUTONOMOUS);
   }
   else /// Disengage Autoware (manual mode)
   {
     //* Request change control mode to MANUAL
-    set_control_mode(AutowareControlMode::MANUAL);
+    success = set_control_mode(AutowareControlMode::MANUAL);
+  }
+
+  if (success)
+  {
+    hmi_beep(BeepOptions::OK);
   }
 }
 
@@ -1097,6 +1112,11 @@ void VilmaInterface::control_mode_request_callback(
   RCLCPP_WARN(this->get_logger(), "Change mode requested.");
 
   response->success = set_control_mode(request->mode);
+
+  if (success)
+  {
+    hmi_beep(BeepOptions::OK);
+  }
 }
 
 /**
@@ -1117,6 +1137,18 @@ void VilmaInterface::joystick_ma_callback(const std_msgs::msg::Float64MultiArray
     }
     mutex_joystick_command_.unlock(); /// Unlock mutex}
   }
+}
+
+/**
+ * @brief
+ *
+ * @param beep_option
+ */
+void VilmaInterface::hmi_beep(const u_int8_t beep_option)
+{
+  auto msg = std_msgs::msg::UInt8();
+  msg.data = beep_option;
+  hmi_beep_pub_->publish(msg);
 }
 
 } // namespace vilma
