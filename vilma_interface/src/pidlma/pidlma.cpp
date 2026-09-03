@@ -175,17 +175,17 @@ void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
   /// Else: engine braking
 
   /// Special case: Keep vehicle stopped
-  if (reference_ == 0.0 && maf_longitudinal_speed_output_ <= 0.1)
-  {
-    //* Assign Full brake
-    control_action.brake_value = 1.0;
+  // if (reference_ == 0.0 && maf_longitudinal_speed_output_ <= 0.1)
+  // {
+  //   //* Assign Full brake
+  //   control_action.brake_value = 1.0;
 
-    //* Setting brake mode in autonomous
-    control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
+  //   //* Setting brake mode in autonomous
+  //   control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
 
-    //* Double check that the control is not throttling
-    control_action.gas_value = 0.0;
-  }
+  //   //* Double check that the control is not throttling
+  //   control_action.gas_value = 0.01;
+  // }
 
   control_action_prev_ = control_action;
 

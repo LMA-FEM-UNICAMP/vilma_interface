@@ -62,8 +62,8 @@ namespace vilma
     this->declare_parameter("output_max", 0.4);  // Max throttle [0.0, 1.0] --- [min, max]
     this->declare_parameter("brake_deadband", -0.1);
     this->declare_parameter("maf_size", 10);
-    this->declare_parameter("max_brake_rate", 50);     // Perc per second
-    this->declare_parameter("max_throttle_rate", 100); // Perc per second
+    this->declare_parameter("max_brake_rate", 50.0);     // Perc per second
+    this->declare_parameter("max_throttle_rate", 100.0); // Perc per second
     this->declare_parameter("max_steering_tire_angle_rad", 25.27 * M_PI / 180.0);
     this->declare_parameter("max_gas_value", 1.0);
     this->declare_parameter("max_brake_value", 1.0);
@@ -100,7 +100,7 @@ namespace vilma
     control_configuration.output_max = this->get_parameter("output_max").as_double();
     control_configuration.ramp_rate = this->get_parameter("speed_reference_ramp_rate").as_double();
     control_configuration.brake_deadband = this->get_parameter("brake_deadband").as_double();
-    control_configuration.maf_size = this->get_parameter("maf_size").as_double();
+    control_configuration.maf_size = this->get_parameter("maf_size").as_int();
     control_configuration.max_brake_rate = this->get_parameter("max_brake_rate").as_double();
     control_configuration.max_throttle_rate = this->get_parameter("max_throttle_rate").as_double();
 
@@ -182,8 +182,8 @@ namespace vilma
     mutex_velocity_controller_.unlock();
 
     user_command_handler_ = TempConditionFilter(delay_to_user_command_ms_);
-    steer_stopped_ = TempConditionFilter(1000);
-    lost_ecu_connection_ = TempConditionFilter(2500); // TODO add parameter and check delay
+    steer_stopped_ = TempConditionFilter(2500);
+    lost_ecu_connection_ = TempConditionFilter(5000); // TODO add parameter and check delay
 
     /// ROS2 entities
 
@@ -658,7 +658,7 @@ namespace vilma
       //* Fully autonomous mode
       case AutowareControlMode::AUTONOMOUS:
 
-        if (!steer_only_mode_)
+        if (steer_only_mode_)
         {
           RCLCPP_WARN(this->get_logger(), "Can't change to AUTONOMOUS MODE. Steer-only configured.");
           return false;
@@ -734,7 +734,7 @@ namespace vilma
       //* Autonomous velocity mode
       case AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY:
 
-        if (!steer_only_mode_)
+        if (steer_only_mode_)
         {
           RCLCPP_WARN(this->get_logger(), "Can't change to AUTONOMOUS_VELOCITY_ONLY MODE. Steer-only configured.");
           return false;
