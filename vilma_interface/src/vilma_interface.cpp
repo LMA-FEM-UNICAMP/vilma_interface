@@ -62,7 +62,7 @@ namespace vilma
     this->declare_parameter("output_max", 0.4);  // Max throttle [0.0, 1.0] --- [min, max]
     this->declare_parameter("brake_deadband", -0.1);
     this->declare_parameter("maf_size", 10);
-    this->declare_parameter("max_brake_rate", 50); // Perc per second
+    this->declare_parameter("max_brake_rate", 50);     // Perc per second
     this->declare_parameter("max_throttle_rate", 100); // Perc per second
     this->declare_parameter("max_steering_tire_angle_rad", 25.27 * M_PI / 180.0);
     this->declare_parameter("max_gas_value", 1.0);
@@ -658,25 +658,28 @@ namespace vilma
       //* Fully autonomous mode
       case AutowareControlMode::AUTONOMOUS:
 
+        if (!steer_only_mode_)
+        {
+          RCLCPP_WARN(this->get_logger(), "Can't change to AUTONOMOUS MODE. Steer-only configured.");
+          return false;
+        }
+
         /// Lock mutex to update shared variable joystick_command_
         mutex_joystick_command_.lock();
         {
-          if (!steer_only_mode_)
-          {
-            //* Stamp to flag as a new data
-            joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+          //* Stamp to flag as a new data
+          joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-            //* Set gas command in position mode [0.0, 1.0]
-            joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
-            //* Avoid send old gas value
-            joystick_command_[JoystickMA::GAS_VALUE] = 0.0;
+          //* Set gas command in position mode [0.0, 1.0]
+          joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
+          //* Avoid send old gas value
+          joystick_command_[JoystickMA::GAS_VALUE] = 0.0;
 
-            //* Set steer command in position mode [-1.0, 1.0]
-            joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
+          //* Set steer command in position mode [-1.0, 1.0]
+          joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_POSITION;
 
-            //* Avoid send old steer value
-            joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(vilma_steer_tire_angle_.load());
-          }
+          //* Avoid send old steer value
+          joystick_command_[JoystickMA::STEER_VALUE] = get_steering_value(vilma_steer_tire_angle_.load());
         }
         mutex_joystick_command_.unlock(); /// Unlock mutex
 
@@ -731,22 +734,25 @@ namespace vilma
       //* Autonomous velocity mode
       case AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY:
 
+        if (!steer_only_mode_)
+        {
+          RCLCPP_WARN(this->get_logger(), "Can't change to AUTONOMOUS_VELOCITY_ONLY MODE. Steer-only configured.");
+          return false;
+        }
+
         /// Lock mutex to update shared variable joystick_command_
         mutex_joystick_command_.lock();
         {
-          if (!steer_only_mode_)
-          {
-            //* Stamp to flag as a new data
-            joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
+          //* Stamp to flag as a new data
+          joystick_command_[JoystickMA::ROS_TIME] = this->get_clock()->now().seconds();
 
-            //* Set gas command in position mode [0.0, 1.0]
-            joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
-            //* Avoid send old gas value
-            joystick_command_[JoystickMA::GAS_VALUE] = 0.0;
+          //* Set gas command in position mode [0.0, 1.0]
+          joystick_command_[JoystickMA::GAS_COMMAND] = JoystickMA::GAS_COMMAND_POSITION;
+          //* Avoid send old gas value
+          joystick_command_[JoystickMA::GAS_VALUE] = 0.0;
 
-            //* Set steer command in manual mode
-            joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
-          }
+          //* Set steer command in manual mode
+          joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
         }
         mutex_joystick_command_.unlock(); /// Unlock mutex
 

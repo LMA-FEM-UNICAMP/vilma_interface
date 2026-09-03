@@ -68,6 +68,6 @@ vilma_interface:
         max_speed_km_h: 60.0
 
         # Debug
-        debug_mode: true # Enable change to manual mode through throttle
+        debug_mode: false # Enable change to manual mode through throttle
         gas_user_value_set_manual: 0.20
-        steer_only_mode: true # Disable pedals emergency mode and void velocity control
+        steer_only_mode: false # Disable pedals emergency mode and void velocity control

@@ -75,6 +75,12 @@ void PIDLMA::reset(int64_t t)
 void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
 {
 
+  // Output rate limit assessing variables
+  double brake_change = 0.0;
+  double max_brake_change = 0.0;
+  double max_throttle_change = 0.0;
+  double throttle_change = 0.0;
+
   // Real sample period in seconds
   double dt = static_cast<double>(t - t_ant_) * 1e-9;
 
@@ -86,6 +92,11 @@ void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
 
   // Calculate error
   double error = velocity_reference_in_ramp_ - maf_longitudinal_speed_output_;
+
+  if (error_ant_ == 0.0)
+  {
+    error_ant_ = error;
+  }
 
   // Set controller
   if (error > 0.0 && control_mode_ != THROTTLE_MODE)
@@ -138,31 +149,28 @@ void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
   if (u_ <= brake_deadband_) /// Active braking
   {
     //* Assign the control action as braking percentage mapped from [-1.0, -0.1] to [0.0, 1.0]
-    double brake_value = (-u_ + brake_deadband_) / (1.0 - brake_deadband_);
+
+    brake_change = (-u_ + brake_deadband_) / (1.0 - brake_deadband_) - control_action_prev_.brake_value;
 
     // Sometimes that you brake hard and fast, the ECU presents some issues, maybe
     // a ramp to filter the brake_value would be good.
     // TODO: Test
-    double max_change = max_brake_rate_ / 100.0 * dt;
+    max_brake_change = max_brake_rate_ / 100.0 * dt;
 
-    control_action.brake_value = std::clamp(brake_value - control_action_prev_.brake_value, -max_change, max_change);
-
-    // Setting anti-windup flag to next loop
-    integrating_ = (abs(control_action.brake_value) > max_change) ? false : integrating_;
+    control_action.brake_value = control_action_prev_.brake_value + std::clamp(brake_change, -max_brake_change, max_brake_change);
 
     //* Setting brake mode in autonomous
     control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
   }
   else if (u_ >= 0) /// Accelerating
   {
-    //* Assign control action as gas pedal position [0.0, 1.0]
+    //* Assign control action as gas pedal position with limited rate [0.0, 1.0]
 
-    double max_change = max_throttle_rate_ / 100.0 * dt;
+    max_throttle_change = max_throttle_rate_ / 100.0 * dt;
 
-    control_action.gas_value = std::clamp(u_ - control_action_prev_.gas_value, -max_change, max_change);
+    throttle_change = u_ - control_action_prev_.gas_value;
 
-    // Setting anti-windup flag to next loop
-    integrating_ = (abs(control_action.gas_value) > max_change) ? false : integrating_;
+    control_action.gas_value = control_action_prev_.gas_value + std::clamp(throttle_change, -max_throttle_change, max_throttle_change);
   }
   /// Else: engine braking
 
@@ -182,10 +190,15 @@ void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
   control_action_prev_ = control_action;
 
   // Setting anti-windup flag to next loop
-  integrating_ = ((u_ >= output_max_ && error > 0)) ? false : integrating_;
-  integrating_ = ((u_ <= output_min_ && error < 0)) ? false : integrating_;
-  integrating_ = ((error_sum_ >= int_max_ && error > 0)) ? false : integrating_;
-  integrating_ = ((error_sum_ <= -int_max_ && error < 0)) ? false : integrating_;
+  if ((u_ >= output_max_ && error > 0) ||             // Top output saturation
+      (u_ <= output_min_ && error < 0) ||             // Bottom output saturation
+      (error_sum_ >= int_max_ && error > 0) ||        // Top integrator value saturation
+      (error_sum_ <= -int_max_ && error < 0) ||       // Bottom integrator value saturation
+      (abs(throttle_change) > max_throttle_change) || // Throttle rate limit reached
+      (abs(brake_change) > max_brake_change))         // Braking rate limit reached
+  {
+    integrating_ = false; // Disable integration
+  }
 }
 
 void PIDLMA::update_velocity_reference_in_ramp(double velocity_target, double dt)
