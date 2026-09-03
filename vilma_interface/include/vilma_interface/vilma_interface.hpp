@@ -71,181 +71,181 @@
 namespace vilma
 {
 
-    class BeepOptions
+class BeepOptions
 {
 public:
-    constexpr static uint8_t NONE = 0;
-    constexpr static uint8_t OK = 1;
-    constexpr static uint8_t ALERT = 2;
-    constexpr static uint8_t EMERGENCY = 3;
+  constexpr static uint8_t NONE = 0;
+  constexpr static uint8_t OK = 1;
+  constexpr static uint8_t ALERT = 2;
+  constexpr static uint8_t EMERGENCY = 3;
 };
 
-    class VilmaInterface : public rclcpp::Node
-    {
+class VilmaInterface : public rclcpp::Node
+{
+public:
+  // Aliases
 
-    public:
-        // Aliases
+  /**
+   * @brief Alias for control modes in autoware_vehicle_msgs::msg::ControlModeReport::msg::XXX
+   */
+  using AutowareControlMode = autoware_vehicle_msgs::msg::ControlModeReport;
 
-        /**
-         * @brief Alias for control modes in autoware_vehicle_msgs::msg::ControlModeReport::msg::XXX
-         */
-        using AutowareControlMode = autoware_vehicle_msgs::msg::ControlModeReport;
+  /**
+   * @brief Alias for gear modes in autoware_vehicle_msgs::msg::GearCommand::msg::XXX
+   */
+  using AutowareGearCommand = autoware_vehicle_msgs::msg::GearCommand;
 
-        /**
-         * @brief Alias for gear modes in autoware_vehicle_msgs::msg::GearCommand::msg::XXX
-         */
-        using AutowareGearCommand = autoware_vehicle_msgs::msg::GearCommand;
+  /**
+   * @brief Alias for gear modes in autoware_vehicle_msgs::msg::GearReport::msg::XXX
+   */
+  using AutowareGearReport = autoware_vehicle_msgs::msg::GearReport;
 
-        /**
-         * @brief Alias for gear modes in autoware_vehicle_msgs::msg::GearReport::msg::XXX
-         */
-        using AutowareGearReport = autoware_vehicle_msgs::msg::GearReport;
+  // Constructor & Destructor
 
-        // Constructor & Destructor
+  VilmaInterface();
+  ~VilmaInterface();
 
-        VilmaInterface();
-        ~VilmaInterface();
+private:
+  // Attributes
 
-    private:
-        // Attributes
+  /* Mutexes */
+  std::mutex mutex_joystick_command_;
+  std::mutex mutex_ma_timer_;
+  std::mutex mutex_vilma_state_;
+  std::mutex mutex_vilma_sensors_;
+  std::mutex mutex_velocity_controller_;
 
-        /* Mutexes */
-        std::mutex mutex_joystick_command_;
-        std::mutex mutex_ma_timer_;
-        std::mutex mutex_vilma_state_;
-        std::mutex mutex_vilma_sensors_;
-        std::mutex mutex_velocity_controller_;
+  /* MA */
+  microautobox::maudp ma_udp_client;
+  std::vector<double> joystick_command_;
+  std::vector<double> to_ma_vector_;
+  std::vector<double> from_ma_vector_;
+  int to_ma_length_;
+  int from_ma_length_;
 
-        /* MA */
-        microautobox::maudp ma_udp_client;
-        std::vector<double> joystick_command_;
-        std::vector<double> to_ma_vector_;
-        std::vector<double> from_ma_vector_;
-        int to_ma_length_;
-        int from_ma_length_;
+  /* Vehicle Control */
+  int ma_operation_mode_;
+  std::atomic<uint8_t> vilma_control_mode_;
+  std::atomic<double> vilma_steer_tire_angle_;
+  std::atomic<double> vilma_steer_tire_speed_;
+  std::atomic<double> vilma_longitudinal_speed_;
+  std::atomic<bool> change_control_mode_enabled_;
+  PIDLMA velocity_controller_;
+  double max_steering_tire_angle_rad_;
+  double max_gas_value_;
+  double max_brake_value_;
+  double max_speed_m_s_;
+  double brake_user_pressure_set_emergency_;
+  bool autonomous_shift_enable_;
+  double delay_to_user_command_ms_;
+  TempConditionFilter user_command_handler_;
+  TempConditionFilter steer_stopped_;
+  TempConditionFilter lost_ecu_connection_;
 
-        /* Vehicle Control */
-        int ma_operation_mode_;
-        std::atomic<uint8_t> vilma_control_mode_;
-        std::atomic<double> vilma_steer_tire_angle_;
-        std::atomic<double> vilma_steer_tire_speed_;
-        std::atomic<double> vilma_longitudinal_speed_;
-        std::atomic<bool> change_control_mode_enabled_;
-        PIDLMA velocity_controller_;
-        double max_steering_tire_angle_rad_;
-        double max_gas_value_;
-        double max_brake_value_;
-        double max_speed_m_s_;
-        double brake_user_pressure_set_emergency_;
-        bool autonomous_shift_enable_;
-        double delay_to_user_command_ms_;
-        TempConditionFilter user_command_handler_;
-        TempConditionFilter steer_stopped_;
-        TempConditionFilter lost_ecu_connection_;
+  /* Command validation */
+  int autoware_command_time_validity_ms_;
+  int communication_timeout_ms_;
 
-        /* Command validation */
-        int autoware_command_time_validity_ms_;
-        int communication_timeout_ms_;
+  /* Debug */
+  bool debug_mode_;
+  bool steer_only_mode_;
+  double gas_user_value_set_manual_;
 
-        /* Debug */
-        bool debug_mode_;
-        bool steer_only_mode_;
-        double gas_user_value_set_manual_;
+  // Methods
 
-        // Methods
+  unsigned short to_ma();
+  void from_ma(int type_tx, rclcpp::Time stamp);
 
-        unsigned short to_ma();
-        void from_ma(int type_tx, rclcpp::Time stamp);
+  bool set_control_mode(uint8_t control_mode);
 
-        bool set_control_mode(uint8_t control_mode);
+  double get_steering_value(double steering_tire_angle_rad);
 
-        double get_steering_value(double steering_tire_angle_rad);
+  int get_operation_state(int operation_state_value);
 
-        int get_operation_state(int operation_state_value);
+  /// ROS 2
 
-        /// ROS 2
+  // Timers
 
-        // Timers
+  rclcpp::Time ma_timer_last_stamp_;
+  rclcpp::TimerBase::SharedPtr ma_timer_;
+  rclcpp::TimerBase::SharedPtr ma_sleep_timer_;
+  rclcpp::TimerBase::SharedPtr control_timer_;
 
-        rclcpp::Time ma_timer_last_stamp_;
-        rclcpp::TimerBase::SharedPtr ma_timer_;
-        rclcpp::TimerBase::SharedPtr ma_sleep_timer_;
-        rclcpp::TimerBase::SharedPtr control_timer_;
+  int ma_timer_period_ms_;
+  int ma_sleep_period_min_;
+  int control_timer_period_ms_;
 
-        int ma_timer_period_ms_;
-        int ma_sleep_period_min_;
-        int control_timer_period_ms_;
+  void ma_timer_callback();
+  void ma_sleep_callback();
+  void control_timer_callback();
 
-        void ma_timer_callback();
-        void ma_sleep_callback();
-        void control_timer_callback();
+  // Autoware
 
-        // Autoware
+  /* Subscribers */
 
-        /* Subscribers */
+  rclcpp::Subscription<autoware_control_msgs::msg::Control>::SharedPtr control_cmd_sub_;
+  rclcpp::Subscription<autoware_vehicle_msgs::msg::GearCommand>::SharedPtr gear_cmd_sub_;
+  rclcpp::Subscription<autoware_vehicle_msgs::msg::Engage>::SharedPtr engage_sub_;
 
-        rclcpp::Subscription<autoware_control_msgs::msg::Control>::SharedPtr control_cmd_sub_;
-        rclcpp::Subscription<autoware_vehicle_msgs::msg::GearCommand>::SharedPtr gear_cmd_sub_;
-        rclcpp::Subscription<autoware_vehicle_msgs::msg::Engage>::SharedPtr engage_sub_;
+  /* Publishers */
 
-        /* Publishers */
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::ControlModeReport>::SharedPtr control_mode_pub_;
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::GearReport>::SharedPtr gear_report_pub_;
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::SteeringReport>::SharedPtr steering_report_pub_;
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::VelocityReport>::SharedPtr velocity_report_pub_;
 
-        rclcpp::Publisher<autoware_vehicle_msgs::msg::ControlModeReport>::SharedPtr control_mode_pub_;
-        rclcpp::Publisher<autoware_vehicle_msgs::msg::GearReport>::SharedPtr gear_report_pub_;
-        rclcpp::Publisher<autoware_vehicle_msgs::msg::SteeringReport>::SharedPtr steering_report_pub_;
-        rclcpp::Publisher<autoware_vehicle_msgs::msg::VelocityReport>::SharedPtr velocity_report_pub_;
+  /* Services */
 
-        /* Services */
+  rclcpp::Service<autoware_vehicle_msgs::srv::ControlModeCommand>::SharedPtr control_mode_request_server_;
 
-        rclcpp::Service<autoware_vehicle_msgs::srv::ControlModeCommand>::SharedPtr control_mode_request_server_;
+  /* Callback groups */
 
-        /* Callback groups */
+  /// Using callback groups to parallel execution of node timers and subscriber callbacks
 
-        /// Using callback groups to parallel execution of node timers and subscriber callbacks
+  rclcpp::CallbackGroup::SharedPtr timers_callback_group_;
+  rclcpp::CallbackGroup::SharedPtr subscribers_callback_group_;
 
-        rclcpp::CallbackGroup::SharedPtr timers_callback_group_;
-        rclcpp::CallbackGroup::SharedPtr subscribers_callback_group_;
+  /* Callbacks */
 
-        /* Callbacks */
+  void control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg);
+  void gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg);
+  void engage_callback(const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr msg);
+  void
+  control_mode_request_callback(const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
+                                const autoware_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response);
 
-        void control_cmd_callback(const autoware_control_msgs::msg::Control::ConstSharedPtr msg);
-        void gear_cmd_callback(const autoware_vehicle_msgs::msg::GearCommand::ConstSharedPtr msg);
-        void engage_callback(const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr msg);
-        void control_mode_request_callback(const autoware_vehicle_msgs::srv::ControlModeCommand::Request::SharedPtr request,
-                                           const autoware_vehicle_msgs::srv::ControlModeCommand::Response::SharedPtr response);
+  // VILMA
 
-        // VILMA
+  /* Subscribers */
 
-        /* Subscribers */
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr joystick_ma_sub_;
 
-        rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr joystick_ma_sub_;
+  /* Publishers */
 
-        /* Publishers */
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_ma_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr sensors_ma_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr longitudinal_control_pub_;
 
-        rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_ma_pub_;
-        rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr sensors_ma_pub_;
-        rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr longitudinal_control_pub_;
+  /* Messages */
 
-        /* Messages */
+  std_msgs::msg::Float64MultiArray state_ma_msg_;
+  std_msgs::msg::Float64MultiArray sensors_ma_msg_;
 
-        std_msgs::msg::Float64MultiArray state_ma_msg_;
-        std_msgs::msg::Float64MultiArray sensors_ma_msg_;
+  /* Callbacks */
 
-        /* Callbacks */
+  void joystick_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg);
 
-        void joystick_ma_callback(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg);
+  // HMI
 
-        // HMI
+  /* Publishers */
 
-        /* Publishers */
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_throttle_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_braking_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr hmi_status_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr hmi_beep_pub_;
 
-        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_throttle_pub_;
-        rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr hmi_braking_pub_;
-        rclcpp::Publisher<std_msgs::msg::String>::SharedPtr hmi_status_pub_;
-        rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr hmi_beep_pub_;
+  void hmi_beep(const u_int8_t beep_option);
+};
 
-        void hmi_beep(const u_int8_t beep_option);
-    };
-
-} // namespace vilma
-#endif // vilma_interface__HPP_
+}  // namespace vilma
+#endif  // vilma_interface__HPP_

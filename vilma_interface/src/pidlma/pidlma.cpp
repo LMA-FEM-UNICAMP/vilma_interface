@@ -32,7 +32,7 @@ PIDLMA::PIDLMA()
   control_mode_ = INITIAL_MODE;
 }
 
-void PIDLMA::configure(const PIDLMA_config_t &control_configuration)
+void PIDLMA::configure(const PIDLMA_config_t& control_configuration)
 {
   kp_t_ = control_configuration.k_p_t;
   kd_t_ = control_configuration.k_d_t;
@@ -72,9 +72,8 @@ void PIDLMA::reset(int64_t t)
   velocity_reference_in_ramp_ = 0;
 }
 
-void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
+void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
 {
-
   // Output rate limit assessing variables
   double brake_change = 0.0;
   double max_brake_change = 0.0;
@@ -120,7 +119,7 @@ void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
 
   // Integrate error and saturate if greater then int_max_ or output is saturated
   error_sum_ += (integrating_) ? error * dt : 0.0;
-  integrating_ = true; // Resetting anti-wind up flag
+  integrating_ = true;  // Resetting anti-wind up flag
 
   // Compute control action
   double p = error * kp_;
@@ -146,7 +145,7 @@ void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
   error_ant_ = error;
 
   //* Checking control action value to assign as braking, accelerating or engine braking
-  if (u_ <= brake_deadband_) /// Active braking
+  if (u_ <= brake_deadband_)  /// Active braking
   {
     //* Assign the control action as braking percentage mapped from [-1.0, -0.1] to [0.0, 1.0]
 
@@ -157,12 +156,13 @@ void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
     // TODO: Test
     max_brake_change = max_brake_rate_ / 100.0 * dt;
 
-    control_action.brake_value = control_action_prev_.brake_value + std::clamp(brake_change, -max_brake_change, max_brake_change);
+    control_action.brake_value =
+        control_action_prev_.brake_value + std::clamp(brake_change, -max_brake_change, max_brake_change);
 
     //* Setting brake mode in autonomous
     control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
   }
-  else if (u_ >= 0) /// Accelerating
+  else if (u_ >= 0)  /// Accelerating
   {
     //* Assign control action as gas pedal position with limited rate [0.0, 1.0]
 
@@ -170,7 +170,10 @@ void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
 
     throttle_change = u_ - control_action_prev_.gas_value;
 
-    control_action.gas_value = control_action_prev_.gas_value + std::clamp(throttle_change, -max_throttle_change, max_throttle_change);
+    control_action.gas_value =
+        std::clamp((control_action_prev_.gas_value +
+                    std::clamp(throttle_change, -max_throttle_change, max_throttle_change) + 0.07),
+                   0.0, 1.0);  // Adding offset to avoid engine to lost power
   }
   /// Else: engine braking
 
@@ -190,14 +193,14 @@ void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
   control_action_prev_ = control_action;
 
   // Setting anti-windup flag to next loop
-  if ((u_ >= output_max_ && error > 0) ||             // Top output saturation
-      (u_ <= output_min_ && error < 0) ||             // Bottom output saturation
-      (error_sum_ >= int_max_ && error > 0) ||        // Top integrator value saturation
-      (error_sum_ <= -int_max_ && error < 0) ||       // Bottom integrator value saturation
-      (abs(throttle_change) > max_throttle_change) || // Throttle rate limit reached
-      (abs(brake_change) > max_brake_change))         // Braking rate limit reached
+  if ((u_ >= output_max_ && error > 0) ||              // Top output saturation
+      (u_ <= output_min_ && error < 0) ||              // Bottom output saturation
+      (error_sum_ >= int_max_ && error > 0) ||         // Top integrator value saturation
+      (error_sum_ <= -int_max_ && error < 0) ||        // Bottom integrator value saturation
+      (abs(throttle_change) > max_throttle_change) ||  // Throttle rate limit reached
+      (abs(brake_change) > max_brake_change))          // Braking rate limit reached
   {
-    integrating_ = false; // Disable integration
+    integrating_ = false;  // Disable integration
   }
 }
 
@@ -234,7 +237,6 @@ void PIDLMA::update_velocity_reference_in_ramp(double velocity_target, double dt
 
 void PIDLMA::updateVelocityFilter(double longitudinal_speed)
 {
-
   if (maf_longitudinal_speed_buffer_.size() == 0)
   {
     maf_longitudinal_speed_output_ = 0;
@@ -242,12 +244,15 @@ void PIDLMA::updateVelocityFilter(double longitudinal_speed)
   else if (maf_longitudinal_speed_buffer_.size() < maf_size_)
   {
     maf_longitudinal_speed_buffer_.push(longitudinal_speed);
-    maf_longitudinal_speed_output_ = maf_longitudinal_speed_output_ + longitudinal_speed / maf_longitudinal_speed_buffer_.size() - maf_longitudinal_speed_buffer_.front() / maf_longitudinal_speed_buffer_.size();
+    maf_longitudinal_speed_output_ = maf_longitudinal_speed_output_ +
+                                     longitudinal_speed / maf_longitudinal_speed_buffer_.size() -
+                                     maf_longitudinal_speed_buffer_.front() / maf_longitudinal_speed_buffer_.size();
   }
   else if (maf_longitudinal_speed_buffer_.size() == maf_size_)
   {
     maf_longitudinal_speed_buffer_.push(longitudinal_speed);
-    maf_longitudinal_speed_output_ = maf_longitudinal_speed_output_ + longitudinal_speed / maf_size_ - maf_longitudinal_speed_buffer_.front() / maf_size_;
+    maf_longitudinal_speed_output_ = maf_longitudinal_speed_output_ + longitudinal_speed / maf_size_ -
+                                     maf_longitudinal_speed_buffer_.front() / maf_size_;
     maf_longitudinal_speed_buffer_.pop();
   }
 }

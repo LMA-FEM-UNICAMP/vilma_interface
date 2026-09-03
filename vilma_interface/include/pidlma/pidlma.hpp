@@ -65,7 +65,6 @@ struct LongActuationCommand
 
 class PIDLMA
 {
-
   constexpr static uint8_t INITIAL_MODE = -1;
   constexpr static uint8_t THROTTLE_MODE = 1;
   constexpr static uint8_t BRAKING_MODE = 2;
@@ -101,7 +100,6 @@ class PIDLMA
   double max_throttle_rate_;
 
   LongActuationCommand control_action_prev_;
-
 
 public:
   /**
