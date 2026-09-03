@@ -45,7 +45,11 @@ vilma_interface:
         output_max: 0.3
 
         brake_deadband: -0.1
-        speed_reference_ramp_rate: 2.5 # 0.0 for Autoware
+        maf_size: 10
+        max_brake_rate: 50 # Percent per second
+        max_throttle_rate: 100 # Percent per second
+
+        speed_reference_ramp_rate: 0.0 # 0.0 for Autoware
         brake_user_pressure_set_emergency: 10.0
         delay_to_user_command_ms: 200
         autonomous_shift_enable: false

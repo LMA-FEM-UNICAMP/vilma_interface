@@ -25,6 +25,7 @@
 
 #include "vilma_interface/vilma_ma_labeling.hpp"
 #include <cstdint>
+#include <queue>
 
 typedef struct
 {
@@ -41,6 +42,9 @@ typedef struct
   double brake_deadband;
   double output_min;
   double output_max;
+  uint8_t maf_size;
+  double max_brake_rate;
+  double max_throttle_rate;
 } PIDLMA_config_t;
 
 struct LongActuationCommand
@@ -48,14 +52,32 @@ struct LongActuationCommand
   double brake_command = 0.0;
   double brake_value = 0.0;
   double gas_value = 0.0;
+  double u;
+  double p;
+  double i;
+  double d;
+  double e;
+  double e_i;
+  double dt;
+  double ref;
+  double v;
 };
 
 class PIDLMA
 {
+
+  constexpr static uint8_t INITIAL_MODE = -1;
+  constexpr static uint8_t THROTTLE_MODE = 1;
+  constexpr static uint8_t BRAKING_MODE = 2;
+
   double kp_t_, kd_t_, ki_t_;
   double int_max_t_;
   double kp_b_, kd_b_, ki_b_;
   double int_max_b_;
+  double kp_;
+  double kd_;
+  double ki_;
+  double int_max_;
   double error_ant_;
   double error_sum_;
   double t_ant_;
@@ -66,6 +88,20 @@ class PIDLMA
   double reference_;
   double output_max_;
   double output_min_;
+
+  bool integrating_;
+
+  int8_t control_mode_;
+
+  std::queue<double> maf_longitudinal_speed_buffer_;
+  double maf_longitudinal_speed_output_;
+  uint8_t maf_size_;
+
+  double max_brake_rate_;
+  double max_throttle_rate_;
+
+  LongActuationCommand control_action_prev_;
+
 
 public:
   /**
@@ -101,10 +137,16 @@ public:
    * speed value at a time t.
    *
    * @param control_action Returned control action in LongActuationCommand format
-   * @param value Current longitudinal velocity
    * @param t Nanoseconds since epoch
    */
-  void calculate(LongActuationCommand& control_action, double value, int64_t t);
+  void calculate(LongActuationCommand& control_action, int64_t t);
+
+  /**
+   * @brief Anti-aliasing filter for measured speed
+   *
+   * @param longitudinal_speed
+   */
+  void updateVelocityFilter(double longitudinal_speed);
 
   /**
    * @brief Set the Reference object

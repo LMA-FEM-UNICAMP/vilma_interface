@@ -32,6 +32,7 @@
 #include <functional>
 #include <cmath>
 #include <cstdlib>
+#include <cstdint>
 #include <memory>
 #include <vector>
 #include <string>
@@ -73,10 +74,10 @@ namespace vilma
     class BeepOptions
 {
 public:
-    constexpr static uint NONE = 0;
-    constexpr static uint OK = 1;
-    constexpr static uint ALERT = 2;
-    constexpr static uint EMERGENCY = 3;
+    constexpr static uint8_t NONE = 0;
+    constexpr static uint8_t OK = 1;
+    constexpr static uint8_t ALERT = 2;
+    constexpr static uint8_t EMERGENCY = 3;
 };
 
     class VilmaInterface : public rclcpp::Node
@@ -223,6 +224,7 @@ public:
 
         rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_ma_pub_;
         rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr sensors_ma_pub_;
+        rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr longitudinal_control_pub_;
 
         /* Messages */
 

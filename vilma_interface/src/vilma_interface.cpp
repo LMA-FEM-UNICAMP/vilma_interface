@@ -61,6 +61,9 @@ namespace vilma
     this->declare_parameter("output_min", -1.0); // Max braking [0.0, -1.0] --- [min, max]
     this->declare_parameter("output_max", 0.4);  // Max throttle [0.0, 1.0] --- [min, max]
     this->declare_parameter("brake_deadband", -0.1);
+    this->declare_parameter("maf_size", 10);
+    this->declare_parameter("max_brake_rate", 50); // Perc per second
+    this->declare_parameter("max_throttle_rate", 100); // Perc per second
     this->declare_parameter("max_steering_tire_angle_rad", 25.27 * M_PI / 180.0);
     this->declare_parameter("max_gas_value", 1.0);
     this->declare_parameter("max_brake_value", 1.0);
@@ -97,6 +100,9 @@ namespace vilma
     control_configuration.output_max = this->get_parameter("output_max").as_double();
     control_configuration.ramp_rate = this->get_parameter("speed_reference_ramp_rate").as_double();
     control_configuration.brake_deadband = this->get_parameter("brake_deadband").as_double();
+    control_configuration.maf_size = this->get_parameter("maf_size").as_double();
+    control_configuration.max_brake_rate = this->get_parameter("max_brake_rate").as_double();
+    control_configuration.max_throttle_rate = this->get_parameter("max_throttle_rate").as_double();
 
     brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
     autonomous_shift_enable_ = this->get_parameter("autonomous_shift_enable").as_bool();
@@ -249,6 +255,9 @@ namespace vilma
     sensors_ma_pub_ =
         this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/sensors_ma", rclcpp::QoS{1});
 
+    longitudinal_control_pub_ =
+        this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/longitudinal_pid", rclcpp::QoS{1});
+
     /* HMI topics */
 
     hmi_throttle_pub_ = this->create_publisher<std_msgs::msg::Float32>("/hmi/throttle", rclcpp::QoS{1});
@@ -295,11 +304,12 @@ namespace vilma
     {
       to_ma_vector_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
 
-      if (steer_stopped_.trig(vilma_steer_tire_speed_.load() == 0.0))
-      {
-        hmi_beep(BeepOptions::ALERT);
-        set_control_mode(AutowareControlMode::MANUAL);
-      }
+      // TODO: Check it better
+      // if (steer_stopped_.trig(vilma_steer_tire_speed_.load() == 0.0))
+      // {
+      //   hmi_beep(BeepOptions::ALERT);
+      //   set_control_mode(AutowareControlMode::MANUAL);
+      // }
     }
 
     //* Checking if the to_ma_vector_ if new (stamp != 0.0)
@@ -541,6 +551,13 @@ namespace vilma
           velocity_report_pub_->publish(velocity_report_msg);
 
           vilma_longitudinal_speed_.store(state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED]);
+
+          // Call pidlma longitudinal_speed filter | Anti-aliasing
+          mutex_velocity_controller_.lock();
+          {
+            velocity_controller_.updateVelocityFilter(state_ma_msg_.data[StateMA::LONGITUDINAL_SPEED]);
+          }
+          mutex_velocity_controller_.unlock();
         }
 
         //* Publish control mode report topic to Autoware
@@ -880,7 +897,7 @@ namespace vilma
 
       //   //* Start ma_sleep_timer_
       //   ma_sleep_timer_->reset();
-      
+
       //   RCLCPP_WARN(this->get_logger(), "Suspending MA communication. Waiting %d minutes to reconnect to MA...",
       //               ma_sleep_period_min_);
       // }
@@ -945,7 +962,7 @@ namespace vilma
         //* Computing control action from current speed and speed reference
         mutex_velocity_controller_.lock();
         {
-          velocity_controller_.calculate(control_action, vilma_longitudinal_speed_.load(),
+          velocity_controller_.calculate(control_action,
                                          this->get_clock()->now().nanoseconds());
         }
         mutex_velocity_controller_.unlock();
@@ -973,6 +990,25 @@ namespace vilma
 
     hmi_throttle_pub_->publish(throttle_value_hmi);
     hmi_braking_pub_->publish(braking_value_hmi);
+
+    //* PID debug information
+
+    std::vector<double> pid_vector;
+
+    pid_vector.push_back(control_action.u);
+    pid_vector.push_back(control_action.p);
+    pid_vector.push_back(control_action.i);
+    pid_vector.push_back(control_action.d);
+    pid_vector.push_back(control_action.e);
+    pid_vector.push_back(control_action.e_i);
+    pid_vector.push_back(control_action.dt);
+    pid_vector.push_back(control_action.ref);
+    pid_vector.push_back(control_action.v);
+
+    std_msgs::msg::Float64MultiArray pid_msg;
+
+    pid_msg.data = pid_vector;
+    longitudinal_control_pub_->publish(pid_msg);
   }
 
   /**

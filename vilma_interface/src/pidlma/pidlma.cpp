@@ -23,10 +23,13 @@
 #include "pidlma/pidlma.hpp"
 
 #include <iostream>
+#include <algorithm>
 
 PIDLMA::PIDLMA()
 {
   // configure(0.0, 0.0, 0.0, 10.0, 0.0, 3.0, -0.1);
+
+  control_mode_ = INITIAL_MODE;
 }
 
 void PIDLMA::configure(const PIDLMA_config_t &control_configuration)
@@ -48,6 +51,16 @@ void PIDLMA::configure(const PIDLMA_config_t &control_configuration)
   error_sum_ = 0;
   u_ = 0;
   velocity_reference_in_ramp_ = 0;
+  maf_size_ = control_configuration.maf_size;
+  max_brake_rate_ = control_configuration.max_brake_rate;
+  max_throttle_rate_ = control_configuration.max_throttle_rate;
+
+  kp_ = 0.0;
+  kd_ = 0.0;
+  ki_ = 0.0;
+  int_max_ = 0.0;
+  control_mode_ = INITIAL_MODE;
+  integrating_ = true;
 }
 
 void PIDLMA::reset(int64_t t)
@@ -59,13 +72,8 @@ void PIDLMA::reset(int64_t t)
   velocity_reference_in_ramp_ = 0;
 }
 
-void PIDLMA::calculate(LongActuationCommand &control_action, double value, int64_t t)
+void PIDLMA::calculate(LongActuationCommand &control_action, int64_t t)
 {
-  // Gains for calculate control action
-  double kp_ = 0.0;
-  double kd_ = 0.0;
-  double ki_ = 0.0;
-  double int_max_ = 0.0;
 
   // Real sample period in seconds
   double dt = static_cast<double>(t - t_ant_) * 1e-9;
@@ -77,44 +85,48 @@ void PIDLMA::calculate(LongActuationCommand &control_action, double value, int64
   update_velocity_reference_in_ramp(reference_, dt);
 
   // Calculate error
-  double error = velocity_reference_in_ramp_ - value;
+  double error = velocity_reference_in_ramp_ - maf_longitudinal_speed_output_;
 
-  // Set integrator saturation
-  // ? Same for throttle and braking?
-  int_max_ = int_max_t_;
+  // Set controller
+  if (error > 0.0 && control_mode_ != THROTTLE_MODE)
+  {
+    kp_ = kp_t_;
+    kd_ = kd_t_;
+    ki_ = ki_t_;
+    int_max_ = int_max_t_;
+    error_sum_ = 0;
+    control_mode_ = THROTTLE_MODE;
+  }
+  else if (error < 0.0 && control_mode_ != BRAKING_MODE)
+  {
+    kp_ = kp_b_;
+    kd_ = kd_b_;
+    ki_ = ki_b_;
+    int_max_ = int_max_b_;
+    error_sum_ = 0;
+    control_mode_ = BRAKING_MODE;
+  }
 
   // Integrate error and saturate if greater then int_max_ or output is saturated
-  error_sum_ += ((u_ >= output_max_ && error > 0) || (u_ <= output_min_ && error < 0) ||
-                 (error_sum_ >= int_max_ && error > 0) || (error_sum_ <= -int_max_ && error < 0))
-                    ? 0
-                    : error * dt;
-
-  //* Select the gains for positive error (throttle) or negative error (braking)
-  if (u_ >= 0.0 && kp_ != kp_t_)
-  {
-    // Throttle gains
-    kp_ = kp_t_;
-    kd_ = kp_t_;
-    ki_ = kp_t_;
-    // error_sum_ = 0.0;
-  }
-  else if (u_ < 0.0 && kp_ != kp_b_)
-  {
-    // Braking gains
-    kp_ = kp_b_;
-    kd_ = kp_b_;
-    ki_ = kp_b_;
-    // error_sum_ = 0.0;
-  }
+  error_sum_ += (integrating_) ? error * dt : 0.0;
+  integrating_ = true; // Resetting anti-wind up flag
 
   // Compute control action
-  u_ = error * kp_ + kd_ * (error - error_ant_) / dt + ki_ * error_sum_;
+  double p = error * kp_;
+  double i = ki_ * error_sum_;
+  double d = kd_ * (error - error_ant_) / dt;
+  u_ = p + i + d;
 
-  std::cout << "***      u = " << u_ << std::endl;
-  std::cout << "***      p = " << error * kp_ << std::endl;
-  std::cout << "***      i = " << ki_ * error_sum_ << std::endl;
-  std::cout << "***error_i = " << error_sum_ << std::endl;
-  std::cout << "***     dt = " << dt << " s" << std::endl;
+  // Debug
+  control_action.p = p;
+  control_action.i = i;
+  control_action.d = d;
+  control_action.dt = dt;
+  control_action.e = error;
+  control_action.e_i = error_sum_;
+  control_action.u = u_;
+  control_action.ref = velocity_reference_in_ramp_;
+  control_action.v = maf_longitudinal_speed_output_;
 
   // Saturate control action
   u_ = (u_ > output_max_) ? output_max_ : ((u_ < output_min_) ? output_min_ : u_);
@@ -126,10 +138,17 @@ void PIDLMA::calculate(LongActuationCommand &control_action, double value, int64
   if (u_ <= brake_deadband_) /// Active braking
   {
     //* Assign the control action as braking percentage mapped from [-1.0, -0.1] to [0.0, 1.0]
-    control_action.brake_value = (-u_ + brake_deadband_) / (1.0 - brake_deadband_);
+    double brake_value = (-u_ + brake_deadband_) / (1.0 - brake_deadband_);
 
-    // TODO: Sometimes that you brake hard and fast, the ECU presents some issues, maybe
-    // TODO:  a ramp to filter the brake_value would be good.
+    // Sometimes that you brake hard and fast, the ECU presents some issues, maybe
+    // a ramp to filter the brake_value would be good.
+    // TODO: Test
+    double max_change = max_brake_rate_ / 100.0 * dt;
+
+    control_action.brake_value = std::clamp(brake_value - control_action_prev_.brake_value, -max_change, max_change);
+
+    // Setting anti-windup flag to next loop
+    integrating_ = (abs(control_action.brake_value) > max_change) ? false : integrating_;
 
     //* Setting brake mode in autonomous
     control_action.brake_command = static_cast<double>(JoystickMA::BRAKE_COMMAND_AUTO);
@@ -137,12 +156,18 @@ void PIDLMA::calculate(LongActuationCommand &control_action, double value, int64
   else if (u_ >= 0) /// Accelerating
   {
     //* Assign control action as gas pedal position [0.0, 1.0]
-    control_action.gas_value = u_; // + 0.07;
+
+    double max_change = max_throttle_rate_ / 100.0 * dt;
+
+    control_action.gas_value = std::clamp(u_ - control_action_prev_.gas_value, -max_change, max_change);
+
+    // Setting anti-windup flag to next loop
+    integrating_ = (abs(control_action.gas_value) > max_change) ? false : integrating_;
   }
   /// Else: engine braking
 
   /// Special case: Keep vehicle stopped
-  if (reference_ == 0.0 && value <= 0.1)
+  if (reference_ == 0.0 && maf_longitudinal_speed_output_ <= 0.1)
   {
     //* Assign Full brake
     control_action.brake_value = 1.0;
@@ -153,6 +178,14 @@ void PIDLMA::calculate(LongActuationCommand &control_action, double value, int64
     //* Double check that the control is not throttling
     control_action.gas_value = 0.0;
   }
+
+  control_action_prev_ = control_action;
+
+  // Setting anti-windup flag to next loop
+  integrating_ = ((u_ >= output_max_ && error > 0)) ? false : integrating_;
+  integrating_ = ((u_ <= output_min_ && error < 0)) ? false : integrating_;
+  integrating_ = ((error_sum_ >= int_max_ && error > 0)) ? false : integrating_;
+  integrating_ = ((error_sum_ <= -int_max_ && error < 0)) ? false : integrating_;
 }
 
 void PIDLMA::update_velocity_reference_in_ramp(double velocity_target, double dt)
@@ -183,6 +216,26 @@ void PIDLMA::update_velocity_reference_in_ramp(double velocity_target, double dt
     // Saturate the value if velocity reference transpass velocity target
     velocity_reference_in_ramp_ =
         (velocity_reference_in_ramp_ < velocity_target) ? velocity_target : velocity_reference_in_ramp_;
+  }
+}
+
+void PIDLMA::updateVelocityFilter(double longitudinal_speed)
+{
+
+  if (maf_longitudinal_speed_buffer_.size() == 0)
+  {
+    maf_longitudinal_speed_output_ = 0;
+  }
+  else if (maf_longitudinal_speed_buffer_.size() < maf_size_)
+  {
+    maf_longitudinal_speed_buffer_.push(longitudinal_speed);
+    maf_longitudinal_speed_output_ = maf_longitudinal_speed_output_ + longitudinal_speed / maf_longitudinal_speed_buffer_.size() - maf_longitudinal_speed_buffer_.front() / maf_longitudinal_speed_buffer_.size();
+  }
+  else if (maf_longitudinal_speed_buffer_.size() == maf_size_)
+  {
+    maf_longitudinal_speed_buffer_.push(longitudinal_speed);
+    maf_longitudinal_speed_output_ = maf_longitudinal_speed_output_ + longitudinal_speed / maf_size_ - maf_longitudinal_speed_buffer_.front() / maf_size_;
+    maf_longitudinal_speed_buffer_.pop();
   }
 }
 
