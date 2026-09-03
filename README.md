@@ -13,10 +13,9 @@
 </p>
 
 
----
 
-For Debug:
+## Longitudinal Control
 
-```bash
-export RCLCPP_LOG_LEVEL=DEBUG
-```
+<p align="center">
+  <img width="80%" src="docs/pidlma_diagram.jpg">
+</p>
