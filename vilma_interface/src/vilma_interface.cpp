@@ -182,7 +182,7 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
   mutex_velocity_controller_.unlock();
 
   user_command_handler_ = TempConditionFilter(delay_to_user_command_ms_);
-  steer_stopped_ = TempConditionFilter(2500);
+  steer_stopped_ = TempConditionFilter(5000);
   lost_ecu_connection_ = TempConditionFilter(5000);  // TODO add parameter and check delay
 
   /// ROS2 entities
@@ -411,12 +411,13 @@ void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
           hmi_status_pub_->publish(msg);
         }
 
-        //* Verify that the user brake pedal was pressed | Emergency -- User braking
+        //* Verify that the user brake pedal was pressed and longitudinal control engaged | Emergency -- User braking
         {
           if (user_command_handler_.trig(
                   ((sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_) ||
                    (sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] >= gas_user_value_set_manual_ && debug_mode_)) &&
-                  !steer_only_mode_))
+                  vilma_control_mode_.load() == AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY &&
+                  vilma_control_mode_.load() == AutowareControlMode::AUTONOMOUS))
           {
             //* Change control mode to manual
             set_control_mode(AutowareControlMode::MANUAL);
@@ -468,7 +469,7 @@ void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
         {
           RCLCPP_FATAL(this->get_logger(),
                        "Steering tire angle value out of limits! Please perform steering zero calibration!");
-          //! Removed because of steering peak on start
+          //! Removed because of spikes, need to add the temp_condition_filter as well.
           // set_control_mode(AutowareControlMode::MANUAL);
           hmi_beep(BeepOptions::ALERT);
         }
