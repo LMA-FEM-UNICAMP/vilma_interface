@@ -66,7 +66,7 @@
 #include "vilma_interface/vilma_ma_labeling.hpp"
 #include "pidlma/pidlma.hpp"
 #include "maudp/maudp.h"
-#include "temp_condition_filter/temp_condition_filter.hpp"
+#include "t_on_filter/t_on_filter.hpp"
 
 namespace vilma
 {
@@ -138,9 +138,9 @@ private:
   double brake_user_pressure_set_emergency_;
   bool autonomous_shift_enable_;
   double delay_to_user_command_ms_;
-  TempConditionFilter user_command_handler_;
-  TempConditionFilter steer_stopped_;
-  TempConditionFilter lost_ecu_connection_;
+  TOnFilter user_command_handler_;
+  TOnFilter steer_stopped_;
+  TOnFilter lost_ecu_connection_;
 
   /* Command validation */
   int autoware_command_time_validity_ms_;

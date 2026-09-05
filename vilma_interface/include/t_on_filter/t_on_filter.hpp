@@ -1,15 +1,15 @@
-#ifndef TEMP_CONDITION_FILTER__HPP_
-#define TEMP_CONDITION_FILTER__HPP_
+#ifndef t_on_filter__HPP_
+#define t_on_filter__HPP_
 
 #include <chrono>
 
-class TempConditionFilter
+class TOnFilter
 {
 public:
     using Clock = std::chrono::steady_clock;
 
-    TempConditionFilter();
-    TempConditionFilter(uint32_t delay_to_trigger_ms);
+    TOnFilter();
+    TOnFilter(uint32_t delay_to_trigger_ms);
 
     bool trig(bool condition);
 
@@ -25,4 +25,4 @@ private:
     bool triggered_;
 };
 
-#endif // TEMP_CONDITION_FILTER__HPP_
+#endif // t_on_filter__HPP_

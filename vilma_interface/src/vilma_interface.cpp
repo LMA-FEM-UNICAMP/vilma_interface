@@ -77,6 +77,8 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
   this->declare_parameter("steer_only_mode", false);
   this->declare_parameter("gas_user_value_set_manual", 0.10);
   this->declare_parameter("delay_to_user_command_ms", 250);
+  this->declare_parameter("delay_to_user_command_ms", 5000);
+  this->declare_parameter("delay_to_set_emergency_ecu_lost_ms", 5000);
 
   /* UDP communication parameters */
   int pc_udp_port = this->get_parameter("pc_udp_port").as_int();
@@ -104,14 +106,19 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
   control_configuration.max_brake_rate = this->get_parameter("max_brake_rate").as_double();
   control_configuration.max_throttle_rate = this->get_parameter("max_throttle_rate").as_double();
 
+  /* Vehicle behavior configuration*/
   brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
   autonomous_shift_enable_ = this->get_parameter("autonomous_shift_enable").as_bool();
   control_timer_period_ms_ = this->get_parameter("control_timer_period_ms").as_int();
   delay_to_user_command_ms_ = this->get_parameter("delay_to_user_command_ms").as_int();
+  uint16_t delay_to_conclude_steer_zero_routine_ms =
+      this->get_parameter("delay_to_conclude_steer_zero_routine_ms").as_int();
+  uint16_t delay_to_set_emergency_ecu_lost_ms = this->get_parameter("delay_to_set_emergency_ecu_lost_ms").as_int();
 
   /* Command time validity */
-  autoware_command_time_validity_ms_ = this->get_parameter("autoware_command_time_validity_ms").as_int();
-  communication_timeout_ms_ = this->get_parameter("communication_timeout_ms").as_int();
+  autoware_command_time_validity_ms_ =
+      this->get_parameter("autoware_command_time_validity_ms").as_int();                 // TODO: Implement
+  communication_timeout_ms_ = this->get_parameter("communication_timeout_ms").as_int();  // TODO: Implement
   double joystick_command_time_validity_ms = this->get_parameter("joystick_command_time_validity_ms").as_int();
 
   /* Vehicle parameters */
@@ -181,9 +188,9 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
   }
   mutex_velocity_controller_.unlock();
 
-  user_command_handler_ = TempConditionFilter(delay_to_user_command_ms_);
-  steer_stopped_ = TempConditionFilter(5000);
-  lost_ecu_connection_ = TempConditionFilter(5000);  // TODO add parameter and check delay
+  user_command_handler_ = TOnFilter(delay_to_user_command_ms_);
+  steer_stopped_ = TOnFilter(delay_to_conclude_steer_zero_routine_ms);
+  lost_ecu_connection_ = TOnFilter(delay_to_set_emergency_ecu_lost_ms);  // TODO add parameter and check delay
 
   /// ROS2 entities
 
@@ -297,20 +304,19 @@ unsigned short VilmaInterface::to_ma()
   mutex_joystick_command_.lock();  /// Lock mutex to read shared variable joystick_command_
   {
     to_ma_vector_ = joystick_command_;
+    if (vilma_control_mode_.load() == AutowareControlMode::NOT_READY)
+    {
+      joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
+
+      // TODO: Check it better
+      if (steer_stopped_.trig(vilma_steer_tire_speed_.load() == 0.0))
+      {
+        hmi_beep(BeepOptions::ALERT);
+        set_control_mode(AutowareControlMode::MANUAL);
+      }
+    }
   }
   mutex_joystick_command_.unlock();  /// Unlock mutex
-
-  if (vilma_control_mode_.load() == AutowareControlMode::NOT_READY)
-  {
-    to_ma_vector_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
-
-    // TODO: Check it better
-    // if (steer_stopped_.trig(vilma_steer_tire_speed_.load() == 0.0))
-    // {
-    //   hmi_beep(BeepOptions::ALERT);
-    //   set_control_mode(AutowareControlMode::MANUAL);
-    // }
-  }
 
   //* Checking if the to_ma_vector_ if new (stamp != 0.0)
   if (to_ma_vector_[0] == 0.0)  /// If not new, just request MA data
@@ -469,7 +475,7 @@ void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
         {
           RCLCPP_FATAL(this->get_logger(),
                        "Steering tire angle value out of limits! Please perform steering zero calibration!");
-          //! Removed because of spikes, need to add the temp_condition_filter as well.
+          //! Removed because of spikes, need to add the t_on_filter as well.
           // set_control_mode(AutowareControlMode::MANUAL);
           hmi_beep(BeepOptions::ALERT);
         }

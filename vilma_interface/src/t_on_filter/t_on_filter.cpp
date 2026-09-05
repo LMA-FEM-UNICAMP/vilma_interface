@@ -1,16 +1,16 @@
-#include "temp_condition_filter/temp_condition_filter.hpp"
+#include "t_on_filter/t_on_filter.hpp"
 
-TempConditionFilter::TempConditionFilter()
+TOnFilter::TOnFilter()
 {
     this->duration_ = std::chrono::milliseconds(1000);
 }
 
-TempConditionFilter::TempConditionFilter(uint32_t delay_to_trigger_ms)
+TOnFilter::TOnFilter(uint32_t delay_to_trigger_ms)
 {
     this->duration_ = std::chrono::milliseconds(delay_to_trigger_ms);
 }
 
-bool TempConditionFilter::trig(bool condition)
+bool TOnFilter::trig(bool condition)
 {
     auto now = Clock::now();
 
@@ -37,12 +37,12 @@ bool TempConditionFilter::trig(bool condition)
     return false;
 }
 
-void TempConditionFilter::reset()
+void TOnFilter::reset()
 {
     triggered_ = false;
 }
 
-void TempConditionFilter::update_delay(uint32_t delay_to_trigger_ms)
+void TOnFilter::update_delay(uint32_t delay_to_trigger_ms)
 {
     this->duration_ = std::chrono::milliseconds(delay_to_trigger_ms);
 }

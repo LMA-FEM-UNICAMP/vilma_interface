@@ -52,6 +52,8 @@ vilma_interface:
         speed_reference_ramp_rate: 0.0 # 0.0 for Autoware
         brake_user_pressure_set_emergency: 10.0
         delay_to_user_command_ms: 200
+        delay_to_conclude_steer_zero_routine_ms: 3000
+        delay_to_set_emergency_ecu_lost_ms: 5000
         autonomous_shift_enable: false
         control_timer_period_ms: 100
 

@@ -12,7 +12,9 @@
   <img width="80%" src="docs/rosgraph.png">
 </p>
 
+## TON Filter
 
+TON Filter is a retarder filter that act as a TON relay, where if the input is `True` for more them TON time to trigger, it is activated.
 
 ## Longitudinal Control
 
