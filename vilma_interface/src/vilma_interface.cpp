@@ -77,7 +77,7 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
   this->declare_parameter("steer_only_mode", false);
   this->declare_parameter("gas_user_value_set_manual", 0.10);
   this->declare_parameter("delay_to_user_command_ms", 250);
-  this->declare_parameter("delay_to_user_command_ms", 5000);
+  this->declare_parameter("delay_to_conclude_steer_zero_routine_ms", 5000);
   this->declare_parameter("delay_to_set_emergency_ecu_lost_ms", 5000);
 
   /* UDP communication parameters */
