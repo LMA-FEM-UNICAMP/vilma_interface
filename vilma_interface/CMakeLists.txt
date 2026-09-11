@@ -46,6 +46,7 @@ install(TARGETS vilma_interface_node
 install(DIRECTORY 
   config
   launch
+  rviz
   DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)

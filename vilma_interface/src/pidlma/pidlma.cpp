@@ -100,8 +100,8 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
   // Update current time for next period calculation
   t_ant_ = t;
 
-  //* Control states
-  if (control_mode_ == INITIAL_MODE)
+  //* Launching routine
+  if (control_mode_ == INITIAL_MODE && reference_ >= (v_launch_thr_ * 0.5))
   {
     if (maf_longitudinal_speed_output_ > v_launch_thr_)
     {
@@ -113,6 +113,7 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
     return;
   }
 
+  //* Cruising control
   else
   {
     // Update velocity reference in ramp
@@ -126,7 +127,7 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
       error_ant_ = error;
     }
 
-    // Set controller
+    //* Set controller
 
     /// Throttle controller
     if (error >= 0.0 && control_mode_ == BRAKING_MODE)
@@ -150,8 +151,8 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
       control_mode_ = BRAKING_MODE;
     }
 
-    // Compute control action
-    double p = error * kp_;
+    //* Compute control action
+    double p = kp_ * error;
     double i = ki_ * error_sum_;
     double d = kd_ * (error - error_ant_) / dt;
     u_ = p + i + d;
@@ -198,7 +199,7 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
     {
       //* Assign control action as gas pedal position with limited rate [0.0, 1.0]
 
-      max_throttle_change = max_throttle_rate_ / 100.0 * dt;
+      max_throttle_change = (max_throttle_rate_ / 100.0) * dt;
 
       throttle_change = u_ - control_action_prev_.gas_value;
 

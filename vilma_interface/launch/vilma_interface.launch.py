@@ -50,6 +50,19 @@ def launch_setup(context, *args, **kwargs):
         )
         launch_items.append(hmi_launch)
 
+    if LaunchConfiguration("rviz").perform(context).lower() == "true":
+        rviz_node = Node(
+            package="rviz2",
+            executable="rviz2",
+            name="rviz2",
+            output="screen",
+            arguments=[
+                "-d",
+                os.path.join(get_package_share_directory("vilma_interface"), "rviz", "pid.rviz")
+            ],
+        )
+        launch_items.append(rviz_node)
+
     return launch_items + [
         RegisterEventHandler(
             event_handler=OnProcessExit(
@@ -65,7 +78,10 @@ def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument("hmi", default_value="false"),
-            DeclareLaunchArgument("interface", default_value="vilma_autoware_steer_only"),
+            DeclareLaunchArgument("rviz", default_value="false"),
+            DeclareLaunchArgument(
+                "interface", default_value="vilma_autoware_steer_only"
+            ),
         ]
         + [OpaqueFunction(function=launch_setup)]
     )
