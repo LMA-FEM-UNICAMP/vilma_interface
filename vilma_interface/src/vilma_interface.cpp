@@ -310,17 +310,23 @@ unsigned short VilmaInterface::to_ma()
   mutex_joystick_command_.lock();  /// Lock mutex to read shared variable joystick_command_
   {
     to_ma_vector_ = joystick_command_;
-    if (vilma_control_mode_.load() == AutowareControlMode::NOT_READY)
+    if (joystick_command_[JoystickMA::STEER_COMMAND] == JoystickMA::STEER_COMMAND_LOOK_ZERO)
     {
       joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
-
-      // TODO: Check it better
-      if (steer_stopped_.trig(vilma_steer_tire_speed_.load() == 0.0))
-      {
-        hmi_beep(BeepOptions::ALERT);
-        set_control_mode(AutowareControlMode::MANUAL);
-      }
     }
+
+    // TODO Test this routine
+    // if (vilma_control_mode_.load() == AutowareControlMode::NOT_READY)
+    // {
+    //   joystick_command_[JoystickMA::STEER_COMMAND] = JoystickMA::STEER_COMMAND_OFF;
+
+    //   // TODO: Check it better
+    //   if (steer_stopped_.trig(vilma_steer_tire_speed_.load() == 0.0))
+    //   {
+    //     hmi_beep(BeepOptions::ALERT);
+    //     set_control_mode(AutowareControlMode::MANUAL);
+    //   }
+    // }
   }
   mutex_joystick_command_.unlock();  /// Unlock mutex
 
@@ -1022,7 +1028,7 @@ void VilmaInterface::control_timer_callback()
   pid_msg.dt = control_action.dt;
   pid_msg.ref = control_action.ref;
   pid_msg.v = control_action.v;
-  
+
   longitudinal_control_pub_->publish(pid_msg);
 }
 
