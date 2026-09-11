@@ -11,6 +11,7 @@ find_package(rclcpp  REQUIRED)
 find_package(std_msgs  REQUIRED)
 find_package(autoware_control_msgs REQUIRED)
 find_package(autoware_vehicle_msgs REQUIRED)
+find_package(pidlmadebug_msgs REQUIRED)
 
 ament_auto_add_executable(vilma_interface_node 
   src/vilma_interface_node.cpp
@@ -20,10 +21,10 @@ ament_auto_add_executable(vilma_interface_node
   src/t_on_filter/t_on_filter.cpp
 )
 
-
 target_include_directories(vilma_interface_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+
 target_compile_features(vilma_interface_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 ament_target_dependencies(
   vilma_interface_node
@@ -31,6 +32,7 @@ ament_target_dependencies(
   "std_msgs"
   "autoware_control_msgs"
   "autoware_vehicle_msgs"
+  "pidlmadebug_msgs"
 )
 
 install(DIRECTORY 

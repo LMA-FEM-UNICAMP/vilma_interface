@@ -45,6 +45,9 @@ typedef struct
   uint8_t maf_size;
   double max_brake_rate;
   double max_throttle_rate;
+  double throttle_offset;
+  double v_launch_thr;
+  double u_launch;
 } PIDLMA_config_t;
 
 struct LongActuationCommand
@@ -65,9 +68,9 @@ struct LongActuationCommand
 
 class PIDLMA
 {
-  constexpr static uint8_t INITIAL_MODE = -1;
-  constexpr static uint8_t THROTTLE_MODE = 1;
-  constexpr static uint8_t BRAKING_MODE = 2;
+  constexpr static uint8_t INITIAL_MODE = 1;
+  constexpr static uint8_t THROTTLE_MODE = 2;
+  constexpr static uint8_t BRAKING_MODE = 3;
 
   double kp_t_, kd_t_, ki_t_;
   double int_max_t_;
@@ -87,10 +90,14 @@ class PIDLMA
   double reference_;
   double output_max_;
   double output_min_;
+  double throttle_offset_;
+  double u_launch_;
 
   bool integrating_;
 
   int8_t control_mode_;
+
+  double v_launch_thr_;
 
   std::queue<double> maf_longitudinal_speed_buffer_;
   double maf_longitudinal_speed_output_;
@@ -129,6 +136,12 @@ public:
    * @param t Nanoseconds since epoch
    */
   void reset(int64_t t);
+
+  /**
+   * @brief Reset integration buffers in the controller and time
+   *
+   */
+  void reset();
 
   /**
    * @brief Function that calculate the control action (throttle, braking and braking mode) for the current

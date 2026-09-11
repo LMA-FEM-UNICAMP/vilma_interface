@@ -79,6 +79,9 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
   this->declare_parameter("delay_to_user_command_ms", 250);
   this->declare_parameter("delay_to_conclude_steer_zero_routine_ms", 5000);
   this->declare_parameter("delay_to_set_emergency_ecu_lost_ms", 5000);
+  this->declare_parameter("throttle_offset", 0.05);
+  this->declare_parameter("v_launch_thr", 1.5);
+  this->declare_parameter("u_launch", 0.15);
 
   /* UDP communication parameters */
   int pc_udp_port = this->get_parameter("pc_udp_port").as_int();
@@ -105,6 +108,9 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
   control_configuration.maf_size = this->get_parameter("maf_size").as_int();
   control_configuration.max_brake_rate = this->get_parameter("max_brake_rate").as_double();
   control_configuration.max_throttle_rate = this->get_parameter("max_throttle_rate").as_double();
+  control_configuration.throttle_offset = this->get_parameter("throttle_offset").as_double();
+  control_configuration.v_launch_thr = this->get_parameter("v_launch_thr").as_double();
+  control_configuration.u_launch = this->get_parameter("u_launch").as_double();
 
   /* Vehicle behavior configuration*/
   brake_user_pressure_set_emergency_ = this->get_parameter("brake_user_pressure_set_emergency").as_double();
@@ -263,7 +269,7 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
       this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/sensors_ma", rclcpp::QoS{ 1 });
 
   longitudinal_control_pub_ =
-      this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/longitudinal_pid", rclcpp::QoS{ 1 });
+      this->create_publisher<pidlmadebug_msgs::msg::PidLmaDebug>("/vilma_ma_debug/longitudinal_pid", rclcpp::QoS{ 1 });
 
   /* HMI topics */
 
@@ -1003,21 +1009,20 @@ void VilmaInterface::control_timer_callback()
 
   //* PID debug information
 
-  std::vector<double> pid_vector;
+  pidlmadebug_msgs::msg::PidLmaDebug pid_msg;
 
-  pid_vector.push_back(control_action.u);
-  pid_vector.push_back(control_action.p);
-  pid_vector.push_back(control_action.i);
-  pid_vector.push_back(control_action.d);
-  pid_vector.push_back(control_action.e);
-  pid_vector.push_back(control_action.e_i);
-  pid_vector.push_back(control_action.dt);
-  pid_vector.push_back(control_action.ref);
-  pid_vector.push_back(control_action.v);
-
-  std_msgs::msg::Float64MultiArray pid_msg;
-
-  pid_msg.data = pid_vector;
+  pid_msg.gas_value = control_action.gas_value;
+  pid_msg.brake_value = control_action.brake_value;
+  pid_msg.u = control_action.u;
+  pid_msg.p = control_action.p;
+  pid_msg.i = control_action.i;
+  pid_msg.d = control_action.d;
+  pid_msg.e = control_action.e;
+  pid_msg.ei = control_action.e_i;
+  pid_msg.dt = control_action.dt;
+  pid_msg.ref = control_action.ref;
+  pid_msg.v = control_action.v;
+  
   longitudinal_control_pub_->publish(pid_msg);
 }
 

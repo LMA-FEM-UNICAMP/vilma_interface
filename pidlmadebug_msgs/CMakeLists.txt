@@ -1,0 +1,23 @@
+cmake_minimum_required(VERSION 3.8)
+project(pidlmadebug_msgs)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake_auto REQUIRED)
+find_package(rclcpp  REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/PidLmaDebug.msg"
+)
+
+install(DIRECTORY 
+  msg
+  DESTINATION share/${PROJECT_NAME})
+
+ament_export_include_directories(include)
+
+ament_package()

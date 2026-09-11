@@ -68,6 +68,8 @@
 #include "maudp/maudp.h"
 #include "t_on_filter/t_on_filter.hpp"
 
+#include "pidlmadebug_msgs/msg/pid_lma_debug.hpp"
+
 namespace vilma
 {
 
@@ -224,7 +226,7 @@ private:
 
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_ma_pub_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr sensors_ma_pub_;
-  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr longitudinal_control_pub_;
+  rclcpp::Publisher<pidlmadebug_msgs::msg::PidLmaDebug>::SharedPtr longitudinal_control_pub_;
 
   /* Messages */
 

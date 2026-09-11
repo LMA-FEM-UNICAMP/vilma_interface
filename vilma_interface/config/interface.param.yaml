@@ -48,6 +48,9 @@ vilma_interface:
         maf_size: 10
         max_brake_rate: 50.0 # Percent per second
         max_throttle_rate: 100.0 # Percent per second
+        v_launch_thr: 1.5 # Threshold for launching
+        u_launch: 0.15 # Open-loop control action for launching
+        throttle_offset: 0.05 # Throttle offset to beware 0V
 
         speed_reference_ramp_rate: 0.0 # 0.0 for Autoware
         brake_user_pressure_set_emergency: 10.0
