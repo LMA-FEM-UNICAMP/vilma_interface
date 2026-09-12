@@ -41,7 +41,7 @@ vilma_interface:
         kd_vel_b: 0.0
         int_max_b: 800.0
 
-        output_min: -1.0
+        output_min: 0.0
         output_max: 0.3
 
         brake_deadband: -0.1
