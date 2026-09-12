@@ -54,7 +54,7 @@ def launch_setup(context, *args, **kwargs):
         rviz_node = Node(
             package="rviz2",
             executable="rviz2",
-            name="rviz2",
+            name="rviz2_pid",
             output="screen",
             arguments=[
                 "-d",

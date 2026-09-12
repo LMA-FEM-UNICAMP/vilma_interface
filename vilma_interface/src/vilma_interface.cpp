@@ -434,8 +434,8 @@ void VilmaInterface::from_ma(int type_tx, rclcpp::Time stamp)
           if (user_command_handler_.trig(
                   ((sensors_ma_msg_.data[SensorsMA::BRAKE_USER_PRESSURE] >= brake_user_pressure_set_emergency_) ||
                    (sensors_ma_msg_.data[SensorsMA::GAS_USER_VALUE] >= gas_user_value_set_manual_ && debug_mode_)) &&
-                  vilma_control_mode_.load() == AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY &&
-                  vilma_control_mode_.load() == AutowareControlMode::AUTONOMOUS))
+                  (vilma_control_mode_.load() == AutowareControlMode::AUTONOMOUS_VELOCITY_ONLY ||
+                   vilma_control_mode_.load() == AutowareControlMode::AUTONOMOUS)))
           {
             //* Change control mode to manual
             set_control_mode(AutowareControlMode::MANUAL);

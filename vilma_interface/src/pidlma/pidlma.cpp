@@ -101,7 +101,7 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
   t_ant_ = t;
 
   //* Launching routine
-  if (control_mode_ == INITIAL_MODE && reference_ >= (v_launch_thr_ * 0.5))
+  if (control_mode_ == INITIAL_MODE && reference_ >= (0.1))
   {
     if (maf_longitudinal_speed_output_ > v_launch_thr_)
     {
@@ -274,7 +274,8 @@ void PIDLMA::updateVelocityFilter(double longitudinal_speed)
 {
   if (maf_longitudinal_speed_buffer_.size() == 0)
   {
-    maf_longitudinal_speed_output_ = 0;
+    maf_longitudinal_speed_output_ = 0.0;
+    maf_longitudinal_speed_buffer_.push(longitudinal_speed);
   }
   else if (maf_longitudinal_speed_buffer_.size() < maf_size_)
   {
