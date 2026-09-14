@@ -101,7 +101,7 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
   t_ant_ = t;
 
   //* Launching routine
-  if (control_mode_ == INITIAL_MODE && reference_ >= (0.1))
+  if (control_mode_ == INITIAL_MODE && reference_ >= (0.1) && v_launch_thr_ > 0.0)
   {
     if (maf_longitudinal_speed_output_ > v_launch_thr_)
     {
@@ -130,7 +130,7 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
     //* Set controller
 
     /// Throttle controller
-    if (error >= 0.0 && control_mode_ == BRAKING_MODE)
+    if (error >= 0.0 && control_mode_ != THROTTLE_MODE)
     {
       kp_ = kp_t_;
       kd_ = kd_t_;
@@ -141,7 +141,7 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
     }
 
     /// Brake controller
-    else if (error < 0.0 && control_mode_ == THROTTLE_MODE)
+    else if (error < 0.0 && control_mode_ != BRAKING_MODE)
     {
       kp_ = kp_b_;
       kd_ = kd_b_;
