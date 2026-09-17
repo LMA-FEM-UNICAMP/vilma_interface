@@ -203,9 +203,8 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
 
       throttle_change = u_ - control_action_prev_.gas_value;
 
-      control_action.gas_value = std::clamp(
-          (control_action_prev_.gas_value + std::clamp(throttle_change, -max_throttle_change, max_throttle_change)),
-          throttle_offset_, output_max_);
+      control_action.gas_value =
+          control_action_prev_.gas_value + std::clamp(throttle_change, -max_throttle_change, max_throttle_change);
     }
     /// Else: engine braking
 
@@ -223,6 +222,8 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
 
       reset();
     }
+
+    control_action.gas_value = std::clamp((control_action.gas_value), throttle_offset_, output_max_);
 
     control_action_prev_ = control_action;
 

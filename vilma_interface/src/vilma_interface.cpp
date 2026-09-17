@@ -250,55 +250,55 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
         "/control/command/control_cmd", rclcpp::QoS{ 1 }, std::bind(&VilmaInterface::control_cmd_callback, this, _1),
         autoware_sub_options);
   }
-}
 
-gear_cmd_sub_ = this->create_subscription<autoware_vehicle_msgs::msg::GearCommand>(
-    "/control/command/gear_cmd", rclcpp::QoS{ 1 }, std::bind(&VilmaInterface::gear_cmd_callback, this, _1),
-    autoware_sub_options);
+  gear_cmd_sub_ = this->create_subscription<autoware_vehicle_msgs::msg::GearCommand>(
+      "/control/command/gear_cmd", rclcpp::QoS{ 1 }, std::bind(&VilmaInterface::gear_cmd_callback, this, _1),
+      autoware_sub_options);
 
-engage_sub_ = this->create_subscription<autoware_vehicle_msgs::msg::Engage>(
-    "/vehicle/engage", rclcpp::QoS{ 1 }, std::bind(&VilmaInterface::engage_callback, this, _1), autoware_sub_options);
+  engage_sub_ = this->create_subscription<autoware_vehicle_msgs::msg::Engage>(
+      "/vehicle/engage", rclcpp::QoS{ 1 }, std::bind(&VilmaInterface::engage_callback, this, _1), autoware_sub_options);
 
-control_mode_request_server_ = this->create_service<autoware_vehicle_msgs::srv::ControlModeCommand>(
-    "/control/control_mode_request", std::bind(&VilmaInterface::control_mode_request_callback, this, _1, _2));
+  control_mode_request_server_ = this->create_service<autoware_vehicle_msgs::srv::ControlModeCommand>(
+      "/control/control_mode_request", std::bind(&VilmaInterface::control_mode_request_callback, this, _1, _2));
 
-/* To Autoware */
-control_mode_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::ControlModeReport>(
-    "/vehicle/status/control_mode", rclcpp::QoS{ 1 });
+  /* To Autoware */
+  control_mode_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::ControlModeReport>(
+      "/vehicle/status/control_mode", rclcpp::QoS{ 1 });
 
-gear_report_pub_ =
-    this->create_publisher<autoware_vehicle_msgs::msg::GearReport>("/vehicle/status/gear_status", rclcpp::QoS{ 1 });
+  gear_report_pub_ =
+      this->create_publisher<autoware_vehicle_msgs::msg::GearReport>("/vehicle/status/gear_status", rclcpp::QoS{ 1 });
 
-steering_report_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::SteeringReport>(
-    "/vehicle/status/steering_status", rclcpp::QoS{ 1 });
+  steering_report_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::SteeringReport>(
+      "/vehicle/status/steering_status", rclcpp::QoS{ 1 });
 
-velocity_report_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::VelocityReport>(
-    "/vehicle/status/velocity_status", rclcpp::QoS{ 1 });
+  velocity_report_pub_ = this->create_publisher<autoware_vehicle_msgs::msg::VelocityReport>(
+      "/vehicle/status/velocity_status", rclcpp::QoS{ 1 });
 
-/* Debug topics */
-joystick_ma_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
-    "/vilma_ma_debug/joystick_ma", rclcpp::QoS{ 1 }, std::bind(&VilmaInterface::joystick_ma_callback, this, _1),
-    debug_sub_options);
+  /* Debug topics */
+  joystick_ma_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+      "/vilma_ma_debug/joystick_ma", rclcpp::QoS{ 1 }, std::bind(&VilmaInterface::joystick_ma_callback, this, _1),
+      debug_sub_options);
 
-state_ma_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/state_ma", rclcpp::QoS{ 1 });
+  state_ma_pub_ =
+      this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/state_ma", rclcpp::QoS{ 1 });
 
-sensors_ma_pub_ =
-    this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/sensors_ma", rclcpp::QoS{ 1 });
+  sensors_ma_pub_ =
+      this->create_publisher<std_msgs::msg::Float64MultiArray>("/vilma_ma_debug/sensors_ma", rclcpp::QoS{ 1 });
 
-longitudinal_control_pub_ =
-    this->create_publisher<pidlmadebug_msgs::msg::PidLmaDebug>("/vilma_ma_debug/longitudinal_pid", rclcpp::QoS{ 1 });
+  longitudinal_control_pub_ =
+      this->create_publisher<pidlmadebug_msgs::msg::PidLmaDebug>("/vilma_ma_debug/longitudinal_pid", rclcpp::QoS{ 1 });
 
-/* HMI topics */
+  /* HMI topics */
 
-hmi_throttle_pub_ = this->create_publisher<std_msgs::msg::Float32>("/hmi/throttle", rclcpp::QoS{ 1 });
+  hmi_throttle_pub_ = this->create_publisher<std_msgs::msg::Float32>("/hmi/throttle", rclcpp::QoS{ 1 });
 
-hmi_braking_pub_ = this->create_publisher<std_msgs::msg::Float32>("/hmi/braking", rclcpp::QoS{ 1 });
+  hmi_braking_pub_ = this->create_publisher<std_msgs::msg::Float32>("/hmi/braking", rclcpp::QoS{ 1 });
 
-hmi_status_pub_ = this->create_publisher<std_msgs::msg::String>("/hmi/status", rclcpp::QoS{ 1 });
+  hmi_status_pub_ = this->create_publisher<std_msgs::msg::String>("/hmi/status", rclcpp::QoS{ 1 });
 
-hmi_beep_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/hmi/beep", rclcpp::QoS{ 1 });
+  hmi_beep_pub_ = this->create_publisher<std_msgs::msg::UInt8>("/hmi/beep", rclcpp::QoS{ 1 });
 
-set_control_mode(vilma_control_mode_);
+  set_control_mode(vilma_control_mode_);
 }
 
 /**
