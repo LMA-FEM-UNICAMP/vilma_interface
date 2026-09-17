@@ -76,3 +76,4 @@ vilma_interface:
         debug_mode: false # Enable change to manual mode through throttle
         gas_user_value_set_manual: 0.20
         steer_only_mode: false # Disable pedals emergency mode and void velocity control
+        use_trajectory_follower_control_reference: true # Select /control/trajectory_follower control reference
