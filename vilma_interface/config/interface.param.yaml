@@ -45,7 +45,7 @@ vilma_interface:
         output_max: 0.3
 
         brake_deadband: -0.1
-        change_controller_deadband_: 0.5
+        change_controller_deadband: 0.5
         maf_size: 10
         max_brake_rate: 10.0 # Percent per second
         max_throttle_rate: 100.0 # Percent per second
