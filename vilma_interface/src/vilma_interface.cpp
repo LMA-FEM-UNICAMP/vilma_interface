@@ -61,6 +61,7 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
   this->declare_parameter("output_min", -1.0);  // Max braking [0.0, -1.0] --- [min, max]
   this->declare_parameter("output_max", 0.4);   // Max throttle [0.0, 1.0] --- [min, max]
   this->declare_parameter("brake_deadband", -0.1);
+  this->declare_parameter("change_controller_deadband", 0.1);
   this->declare_parameter("maf_size", 10);
   this->declare_parameter("max_brake_rate", 50.0);      // Perc per second
   this->declare_parameter("max_throttle_rate", 100.0);  // Perc per second
@@ -106,6 +107,7 @@ VilmaInterface::VilmaInterface() : Node("vilma_interface")
   control_configuration.output_max = this->get_parameter("output_max").as_double();
   control_configuration.ramp_rate = this->get_parameter("speed_reference_ramp_rate").as_double();
   control_configuration.brake_deadband = this->get_parameter("brake_deadband").as_double();
+  control_configuration.change_controller_deadband = this->get_parameter("change_controller_deadband").as_double();
   control_configuration.maf_size = this->get_parameter("maf_size").as_int();
   control_configuration.max_brake_rate = this->get_parameter("max_brake_rate").as_double();
   control_configuration.max_throttle_rate = this->get_parameter("max_throttle_rate").as_double();

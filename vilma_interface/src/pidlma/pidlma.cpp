@@ -43,6 +43,7 @@ void PIDLMA::configure(const PIDLMA_config_t& control_configuration)
   int_max_b_ = control_configuration.int_max_b;
   ramp_rate_ = control_configuration.ramp_rate;
   brake_deadband_ = control_configuration.brake_deadband;
+  change_controller_deadband_ = control_configuration.change_controller_deadband;
   output_max_ = control_configuration.output_max;
   output_min_ = control_configuration.output_min;
   t_ant_ = control_configuration.t;
@@ -141,7 +142,7 @@ void PIDLMA::calculate(LongActuationCommand& control_action, int64_t t)
     }
 
     /// Brake controller
-    else if (error < 0.0 && control_mode_ != BRAKING_MODE)
+    else if (error < -change_controller_deadband_ && control_mode_ != BRAKING_MODE)
     {
       kp_ = kp_b_;
       kd_ = kd_b_;

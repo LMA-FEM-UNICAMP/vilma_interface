@@ -40,6 +40,7 @@ typedef struct
   double t;
   double ramp_rate;
   double brake_deadband;
+  double change_controller_deadband;
   double output_min;
   double output_max;
   uint8_t maf_size;
@@ -87,6 +88,7 @@ class PIDLMA
   double ramp_rate_;
   double velocity_reference_in_ramp_;
   double brake_deadband_;
+  double change_controller_deadband_;
   double reference_;
   double output_max_;
   double output_min_;
