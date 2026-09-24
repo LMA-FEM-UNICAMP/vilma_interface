@@ -31,13 +31,13 @@ vilma_interface:
         ma_sleep_period_min: 2
 
         # Controller
-        kp_vel_t: 0.08
+        kp_vel_t: 0.06
         ki_vel_t: 0.01
         kd_vel_t: 0.0
-        int_max_t: 30.0
+        int_max_t: 40.0
 
-        kp_vel_b: 0.7
-        ki_vel_b: 0.01
+        kp_vel_b: 0.4
+        ki_vel_b: 0.001
         kd_vel_b: 0.0
         int_max_b: 100.0
 
